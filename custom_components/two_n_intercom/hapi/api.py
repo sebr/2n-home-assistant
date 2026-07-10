@@ -1,4 +1,5 @@
-"""Async client for the 2N HTTP API (HAPI).
+"""
+Async client for the 2N HTTP API (HAPI).
 
 See https://wiki.2n.com/hip/hapi/latest/en for the API documentation.
 
@@ -113,7 +114,7 @@ class TwoNApiClient:
         path: str,
         params: dict[str, Any] | None = None,
         method: str = "GET",
-        timeout: float = API_TIMEOUT,
+        timeout: float = API_TIMEOUT,  # noqa: ASYNC109
         json: Any = None,
     ) -> httpx.Response:
         """Perform a request, negotiating Basic vs Digest auth on first use."""
@@ -130,7 +131,11 @@ class TwoNApiClient:
                 if challenge.lower().startswith("basic"):
                     basic = httpx.BasicAuth(self._username, self._password)
                     response = await self._client.request(
-                        method, url, params=params, auth=basic, timeout=timeout,
+                        method,
+                        url,
+                        params=params,
+                        auth=basic,
+                        timeout=timeout,
                         json=json,
                     )
                     if response.status_code != httpx.codes.UNAUTHORIZED:
@@ -161,10 +166,11 @@ class TwoNApiClient:
         path: str,
         params: dict[str, Any] | None = None,
         method: str = "GET",
-        timeout: float = API_TIMEOUT,
+        timeout: float = API_TIMEOUT,  # noqa: ASYNC109
         json: Any = None,
     ) -> Any:
-        """Perform a request and unwrap the JSON envelope.
+        """
+        Perform a request and unwrap the JSON envelope.
 
         Returns the ``result`` object. Some firmware versions return a bare
         JSON value without the envelope (notably /api/call/status); that
@@ -210,7 +216,8 @@ class TwoNApiClient:
         return SystemStatus.from_dict(await self._api_call("/api/system/status"))
 
     async def get_system_caps(self) -> dict[str, str]:
-        """Return the device feature flags from /api/system/caps.
+        """
+        Return the device feature flags from /api/system/caps.
 
         Each key (e.g. "camera", "doorSensor", "motionDetection") maps to
         "active" or "active,licensed".
@@ -235,9 +242,13 @@ class TwoNApiClient:
         return [SwitchStatus.from_dict(item) for item in result.get("switches", [])]
 
     async def set_switch(
-        self, switch: int, action: str, timeout: int | None = None
+        self,
+        switch: int,
+        action: str,
+        timeout: int | None = None,  # noqa: ASYNC109
     ) -> None:
-        """Control a switch.
+        """
+        Control a switch.
 
         Action is on, off, trigger, lock, unlock, hold or release; timeout
         (seconds) auto-releases a hold.
@@ -302,7 +313,8 @@ class TwoNApiClient:
         fps: int = 5,
         source: str | None = None,
     ) -> Any:
-        """Open an MJPEG stream (multipart/x-mixed-replace) from the camera.
+        """
+        Open an MJPEG stream (multipart/x-mixed-replace) from the camera.
 
         Returns the httpx streaming context manager; the caller iterates the
         response with aiter_bytes(). Authentication must already have been
@@ -323,17 +335,15 @@ class TwoNApiClient:
     # ---------------------------------------------------------------- Call --
 
     async def get_call_status(self, session: int | None = None) -> list[CallSession]:
-        """Return the state of active call sessions.
+        """
+        Return the state of active call sessions.
 
         Older firmware wraps the list as result.sessions; v2.50 returns a
         bare JSON array. Both shapes are accepted.
         """
         params = {"session": session} if session is not None else None
         result = await self._api_call("/api/call/status", params=params)
-        if isinstance(result, list):
-            items = result
-        else:
-            items = result.get("sessions", [])
+        items = result if isinstance(result, list) else result.get("sessions", [])
         return [CallSession.from_dict(item) for item in items]
 
     async def dial(self, number: str) -> int | None:
@@ -362,7 +372,8 @@ class TwoNApiClient:
     # --------------------------------------------------------------- Audio --
 
     async def audio_test(self) -> None:
-        """Start the automatic speaker/microphone loop test.
+        """
+        Start the automatic speaker/microphone loop test.
 
         The result arrives asynchronously as an AudioLoopTest event.
         """
@@ -375,7 +386,7 @@ class TwoNApiClient:
         text: str,
         *,
         uid: str | None = None,
-        timeout: int | None = None,
+        timeout: int | None = None,  # noqa: ASYNC109
         icon: str | None = None,
     ) -> None:
         """Show a text message on the device display (PUT /api/display/text)."""
@@ -425,7 +436,7 @@ class TwoNApiClient:
     async def log_pull(
         self,
         subscription_id: int,
-        timeout: int = LOG_PULL_TIMEOUT,
+        timeout: int = LOG_PULL_TIMEOUT,  # noqa: ASYNC109
     ) -> list[TwoNEvent]:
         """Long-poll for new events on a subscription."""
         result = await self._api_call(
