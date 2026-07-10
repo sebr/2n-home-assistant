@@ -21,6 +21,14 @@ ignore = [
     "PLR2004", # Magic numbers in tests are fine
 ]
 
+[lint.per-file-ignores]
+"tests/**" = [
+    "ARG001", # Fixtures are received as unused arguments for their side effects
+    "TC002", # Runtime imports are fine in tests
+    "TC003", # Runtime imports are fine in tests
+    "PLC0415", # Local imports are fine in tests
+]
+
 [lint.flake8-pytest-style]
 fixture-parentheses = false
 
