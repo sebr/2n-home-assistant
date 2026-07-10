@@ -15,6 +15,7 @@ dev = [
     "pre-commit",
     "pytest-asyncio",
     "pytest-homeassistant-custom-component",
+    "pyturbojpeg",
     "respx",
     "ruff==0.15.13",
 ]

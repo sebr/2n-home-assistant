@@ -1,0 +1,76 @@
+{
+  "entity": {
+    "switch": {
+      "switch": {
+        "default": "mdi:electric-switch",
+        "state": {
+          "on": "mdi:electric-switch-closed"
+        }
+      },
+      "io_output": {
+        "default": "mdi:electric-switch",
+        "state": {
+          "on": "mdi:electric-switch-closed"
+        }
+      }
+    },
+    "button": {
+      "switch_trigger": {
+        "default": "mdi:gesture-tap-button"
+      }
+    },
+    "sensor": {
+      "call_state": {
+        "default": "mdi:phone",
+        "state": {
+          "idle": "mdi:phone-hangup",
+          "ringing": "mdi:phone-ring",
+          "connected": "mdi:phone-in-talk"
+        }
+      },
+      "last_card": {
+        "default": "mdi:card-account-details-outline"
+      },
+      "last_user": {
+        "default": "mdi:account-check"
+      },
+      "last_key": {
+        "default": "mdi:dialpad"
+      }
+    },
+    "event": {
+      "keypad": {
+        "default": "mdi:dialpad"
+      },
+      "access": {
+        "default": "mdi:key-chain"
+      },
+      "call": {
+        "default": "mdi:phone-log"
+      }
+    }
+  },
+  "services": {
+    "dial": {
+      "service": "mdi:phone-outgoing"
+    },
+    "answer": {
+      "service": "mdi:phone-check"
+    },
+    "hangup": {
+      "service": "mdi:phone-hangup"
+    },
+    "switch_command": {
+      "service": "mdi:electric-switch"
+    },
+    "audio_test": {
+      "service": "mdi:speaker-message"
+    },
+    "display_text": {
+      "service": "mdi:message-text"
+    },
+    "automation_trigger": {
+      "service": "mdi:play-box"
+    }
+  }
+}

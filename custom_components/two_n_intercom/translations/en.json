@@ -1,0 +1,276 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to your 2N intercom",
+        "description": "Enter the address and HTTP API account credentials of the intercom. The HTTP API services must be enabled on the device under Services → HTTP API.",
+        "data": {
+          "host": "Host",
+          "username": "Username",
+          "password": "Password",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the intercom, e.g. 192.168.1.10.",
+          "verify_ssl": "Disable for the factory self-signed certificate."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate {name}",
+        "description": "The intercom rejected the stored credentials. Enter valid HTTP API account credentials.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Authentication failed. Check the username and password of the HTTP API account.",
+      "cannot_connect": "Failed to connect to the device.",
+      "unknown": "Unexpected error, check the logs."
+    },
+    "abort": {
+      "already_configured": "This intercom is already configured.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Polling interval",
+          "lock_switches": "Switches shown as door locks"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll the device state. Real-time events arrive instantly regardless.",
+          "lock_switches": "Each selected switch is exposed as a lock entity in addition to its switch entity."
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "switch": {
+        "name": "Switch {number}"
+      },
+      "io_output": {
+        "name": "Output {port}"
+      }
+    },
+    "lock": {
+      "door": {
+        "name": "Door {number}"
+      }
+    },
+    "button": {
+      "switch_trigger": {
+        "name": "Trigger switch {number}"
+      }
+    },
+    "binary_sensor": {
+      "motion": {
+        "name": "Motion"
+      },
+      "noise": {
+        "name": "Noise"
+      },
+      "tamper": {
+        "name": "Tamper"
+      },
+      "door": {
+        "name": "Door"
+      },
+      "unauthorized_door_open": {
+        "name": "Unauthorized door open"
+      },
+      "door_open_too_long": {
+        "name": "Door open too long"
+      },
+      "switches_blocked": {
+        "name": "Switches blocked"
+      },
+      "call_in_progress": {
+        "name": "Call in progress"
+      },
+      "ringing": {
+        "name": "Ringing"
+      },
+      "io_input": {
+        "name": "Input {port}"
+      },
+      "sip_registered": {
+        "name": "SIP account {number} registered"
+      }
+    },
+    "sensor": {
+      "last_restart": {
+        "name": "Last restart"
+      },
+      "call_state": {
+        "name": "Call state",
+        "state": {
+          "idle": "Idle",
+          "connecting": "Connecting",
+          "ringing": "Ringing",
+          "connected": "Connected"
+        }
+      },
+      "last_card": {
+        "name": "Last card"
+      },
+      "last_user": {
+        "name": "Last user"
+      },
+      "last_key": {
+        "name": "Last key"
+      }
+    },
+    "event": {
+      "doorbell": {
+        "name": "Doorbell"
+      },
+      "keypad": {
+        "name": "Keypad"
+      },
+      "access": {
+        "name": "Access",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "card": "Card",
+              "card_held": "Card held",
+              "code": "Code",
+              "fingerprint": "Fingerprint",
+              "mobile_key": "Mobile key",
+              "authenticated": "Authenticated",
+              "rejected": "Rejected"
+            }
+          }
+        }
+      },
+      "call": {
+        "name": "Call"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_device": {
+      "message": "Device {device_id} is not a loaded 2N intercom."
+    },
+    "no_active_call": {
+      "message": "There is no active call session on the intercom."
+    }
+  },
+  "services": {
+    "dial": {
+      "name": "Dial",
+      "description": "Starts an outgoing call to a phone number or SIP URI.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The intercom to call from."
+        },
+        "number": {
+          "name": "Number",
+          "description": "Phone number or SIP URI to call."
+        }
+      }
+    },
+    "answer": {
+      "name": "Answer call",
+      "description": "Answers an incoming call.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The intercom."
+        },
+        "session": {
+          "name": "Session",
+          "description": "Call session id. Defaults to the ringing incoming call."
+        }
+      }
+    },
+    "hangup": {
+      "name": "Hang up",
+      "description": "Hangs up a call.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The intercom."
+        },
+        "session": {
+          "name": "Session",
+          "description": "Call session id. Defaults to all active sessions."
+        },
+        "reason": {
+          "name": "Reason",
+          "description": "Hangup reason."
+        }
+      }
+    },
+    "switch_command": {
+      "name": "Switch command",
+      "description": "Sends an advanced command to a switch, including lock and hold.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The intercom."
+        },
+        "switch": {
+          "name": "Switch",
+          "description": "Switch number (1-4)."
+        },
+        "action": {
+          "name": "Action",
+          "description": "The command to send."
+        },
+        "timeout": {
+          "name": "Timeout",
+          "description": "Automatic release time for the hold action, in seconds."
+        }
+      }
+    },
+    "audio_test": {
+      "name": "Audio test",
+      "description": "Starts the built-in speaker and microphone loop test. The result arrives as an AudioLoopTest event.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The intercom."
+        }
+      }
+    },
+    "display_text": {
+      "name": "Display text",
+      "description": "Shows a text message on the device display.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The intercom."
+        },
+        "text": {
+          "name": "Text",
+          "description": "The message to show."
+        },
+        "timeout": {
+          "name": "Timeout",
+          "description": "How long to show the message, in seconds."
+        }
+      }
+    },
+    "automation_trigger": {
+      "name": "Automation trigger",
+      "description": "Fires a named HTTP trigger block in the device's Automation configuration.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "The intercom."
+        },
+        "trigger_id": {
+          "name": "Trigger ID",
+          "description": "Name of the HttpTrigger block."
+        }
+      }
+    }
+  }
+}
