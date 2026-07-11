@@ -164,7 +164,7 @@ async def test_doorbell_event_entity(
     await hass.async_block_till_done()
 
     state = hass.states.get(doorbell_entity)
-    assert state.attributes["event_type"] == "pressed"
+    assert state.attributes["event_type"] == "ring"
     assert state.attributes["button"] == "%1"
 
 
