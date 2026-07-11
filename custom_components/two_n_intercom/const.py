@@ -12,9 +12,10 @@ EVENT_TWO_N_EVENT = f"{DOMAIN}_event"
 
 # Options
 CONF_VERIFY_SSL = "verify_ssl"
-CONF_SCAN_INTERVAL = "scan_interval"
 CONF_LOCK_SWITCHES = "lock_switches"
 DEFAULT_VERIFY_SSL = False
+# Fixed polling interval (seconds). Real-time state arrives via the event loop,
+# so this is not user-configurable.
 DEFAULT_SCAN_INTERVAL = 30
 
 # Attributes used in bus events and entity attributes.

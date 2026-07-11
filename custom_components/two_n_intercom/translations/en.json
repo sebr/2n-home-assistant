@@ -38,11 +38,9 @@
     "step": {
       "init": {
         "data": {
-          "scan_interval": "Polling interval",
           "lock_switches": "Switches shown as door locks"
         },
         "data_description": {
-          "scan_interval": "How often to poll the device state. Real-time events arrive instantly regardless.",
           "lock_switches": "Each selected switch is exposed as a lock entity in addition to its switch entity."
         }
       }
