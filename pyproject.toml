@@ -1,0 +1,24 @@
+[project]
+name = "2n-home-assistant"
+version = "0.1.0"
+description = "Home Assistant custom integration for 2N IP intercoms"
+readme = "README.md"
+requires-python = ">=3.13.2"
+dependencies = [
+    "colorlog==6.10.1",
+    "homeassistant==2025.12.0",
+    "pycares<5.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "pytest-asyncio",
+    "pytest-homeassistant-custom-component",
+    "pyturbojpeg",
+    "respx",
+    "ruff==0.15.13",
+]
+
+[tool.uv]
+package = false

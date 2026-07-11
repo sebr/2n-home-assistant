@@ -1,0 +1,127 @@
+dial:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: two_n_intercom
+    number:
+      required: true
+      example: "sip:1234@192.168.1.10"
+      selector:
+        text:
+
+answer:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: two_n_intercom
+    session:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1000000
+          mode: box
+
+hangup:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: two_n_intercom
+    session:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1000000
+          mode: box
+    reason:
+      required: false
+      default: normal
+      selector:
+        select:
+          options:
+            - normal
+            - rejected
+            - busy
+
+switch_command:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: two_n_intercom
+    switch:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    action:
+      required: true
+      selector:
+        select:
+          options:
+            - "on"
+            - "off"
+            - trigger
+            - lock
+            - unlock
+            - hold
+            - release
+    timeout:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 86400
+          unit_of_measurement: seconds
+          mode: box
+
+audio_test:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: two_n_intercom
+
+display_text:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: two_n_intercom
+    text:
+      required: true
+      selector:
+        text:
+          multiline: true
+    timeout:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 1209600
+          unit_of_measurement: seconds
+          mode: box
+
+automation_trigger:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: two_n_intercom
+    trigger_id:
+      required: true
+      selector:
+        text:
