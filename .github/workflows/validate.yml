@@ -29,3 +29,6 @@ jobs:
         uses: hacs/action@main
         with:
           category: integration
+          # The brands check requires the integration to be listed in
+          # home-assistant/brands; ignore until that submission is accepted.
+          ignore: brands
