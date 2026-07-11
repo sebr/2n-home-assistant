@@ -101,6 +101,9 @@ class TwoNKeypadEvent(TwoNEventEntity):
 
     _attr_event_types = KEYPAD_KEYS
     _attr_translation_key = "keypad"
+    # Fires on every keypad digit, so PIN codes would be recorded to the
+    # logbook. Off by default; users who want keypad automations opt in.
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator: TwoNUpdateCoordinator) -> None:
         """Initialize the keypad event entity."""

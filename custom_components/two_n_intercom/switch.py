@@ -89,6 +89,8 @@ class TwoNIoOutputSwitch(TwoNEntity, SwitchEntity):
     """A logic output port (relay) exposed by the IO API."""
 
     _attr_device_class = SwitchDeviceClass.SWITCH
+    # Generic logic relay; advanced use only. Opt in when wired.
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator: TwoNUpdateCoordinator, port: IoPort) -> None:
         """Initialize for one output port."""

@@ -117,6 +117,9 @@ class TwoNLastEventSensor(TwoNEntity, SensorEntity):
     """Base for diagnostic sensors that show the last event of one type."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    # Card UIDs, user names and keypresses are privacy-sensitive and would be
+    # persisted to state history. Off by default; users opt in per sensor.
+    _attr_entity_registry_enabled_default = False
     event_type: str
     value_param: str
 

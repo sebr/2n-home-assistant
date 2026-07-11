@@ -47,6 +47,8 @@ EVENT_SENSORS: tuple[TwoNEventBinarySensorDescription, ...] = (
         event_type="NoiseDetected",
         device_class=BinarySensorDeviceClass.SOUND,
         translation_key="noise",
+        # Rarely configured and prone to flapping; opt in when needed.
+        entity_registry_enabled_default=False,
     ),
     TwoNEventBinarySensorDescription(
         key="tamper",
@@ -94,10 +96,13 @@ class TwoNCallBinarySensorDescription(BinarySensorEntityDescription):
 
 
 CALL_SENSORS: tuple[TwoNCallBinarySensorDescription, ...] = (
+    # Both are derivable from the call_state sensor and the call event entity;
+    # kept for automations/templates but hidden from auto-generated dashboards.
     TwoNCallBinarySensorDescription(
         key="call_in_progress",
         translation_key="call_in_progress",
         device_class=BinarySensorDeviceClass.RUNNING,
+        entity_registry_visible_default=False,
         value_fn=lambda data: any(
             session.state == "connected" for session in data.sessions.values()
         ),
@@ -106,6 +111,7 @@ CALL_SENSORS: tuple[TwoNCallBinarySensorDescription, ...] = (
         key="ringing",
         translation_key="ringing",
         device_class=BinarySensorDeviceClass.SOUND,
+        entity_registry_visible_default=False,
         value_fn=lambda data: any(
             session.state == "ringing" for session in data.sessions.values()
         ),
@@ -192,6 +198,8 @@ class TwoNInputPortBinarySensor(TwoNEntity, BinarySensorEntity):
     """A logic input port exposed by the IO API."""
 
     _attr_translation_key = "io_input"
+    # Generic GPIO; typically unwired on most installs. Opt in when used.
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, coordinator: TwoNUpdateCoordinator, port: IoPort) -> None:
         """Initialize for one input port."""
@@ -217,6 +225,8 @@ class TwoNSipRegisteredBinarySensor(TwoNEntity, BinarySensorEntity):
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "sip_registered"
+    # Only relevant for SIP troubleshooting; opt in when needed.
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self, coordinator: TwoNUpdateCoordinator, account: PhoneAccount
