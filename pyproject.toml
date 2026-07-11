@@ -3,11 +3,10 @@ name = "2n-home-assistant"
 version = "0.1.0"
 description = "Home Assistant custom integration for 2N IP intercoms"
 readme = "README.md"
-requires-python = ">=3.13.2"
+requires-python = ">=3.14.2"
 dependencies = [
     "colorlog==6.10.1",
-    "homeassistant==2025.12.0",
-    "pycares<5.0.0",
+    "homeassistant==2026.7.2",
 ]
 
 [dependency-groups]

@@ -36,8 +36,12 @@ USER_INPUT = {
 }
 
 
-async def test_user_flow_success(hass: HomeAssistant, flow_api: MagicMock) -> None:
+async def test_user_flow_success(
+    hass: HomeAssistant, flow_api: MagicMock, patch_api: MagicMock
+) -> None:
     """A successful flow creates an entry titled after the device."""
+    # Entry creation triggers a real async_setup_entry, so the coordinator's
+    # own client construction (patch_api) needs mocking too, not just flow_api.
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
