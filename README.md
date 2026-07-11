@@ -17,12 +17,23 @@ integration probes the device's capabilities and event catalog at setup.
 | Platform | Entities |
 | --- | --- |
 | `lock` | A door lock per configured switch (unlock activates the switch; `open` pulses it) |
-| `switch` | Each 2N switch, plus each logic output relay |
+| `switch` | Each 2N switch, plus each logic output relay † |
 | `button` | Trigger per switch, device restart |
 | `camera` | Snapshots plus the device's native MJPEG stream |
-| `binary_sensor` | Motion, noise, tamper, door state, unauthorized door open, door open too long, switches blocked, call in progress, ringing, logic inputs, SIP registration |
-| `sensor` | Call state, last restart, last card, last user, last key |
-| `event` | Doorbell (quick dial buttons), keypad, access (card/code/fingerprint/mobile key), call state |
+| `binary_sensor` | Motion, noise †, tamper, door state, unauthorized door open, door open too long, switches blocked, call in progress ‡, ringing ‡, logic inputs †, SIP registration † |
+| `sensor` | Call state, last restart, last card †, last user †, last key † |
+| `event` | Doorbell (quick dial buttons), keypad †, access (card/code/fingerprint/mobile key), call state |
+
+**† Disabled by default.** These are either privacy-sensitive (the keypad
+event and *last key* record individual keypresses — including PIN digits — to
+history; *last card*/*last user* record RFID UIDs and user names) or niche
+(logic in/out ports, SIP registration, noise detection). Enable them per entity
+in *Settings → Devices & Services → 2N Intercom → entity → Enable* when you
+need them.
+
+**‡ Hidden by default.** The *call in progress* and *ringing* binary sensors
+are redundant with the *call state* sensor and *call* event, so they're kept
+for automations but hidden from auto-generated dashboards.
 
 ### Services
 

@@ -91,10 +91,23 @@ async def test_entities_created(
     assert hass.states.get(switch_entity).state == "off"
     lock_entity = registry.async_get_entity_id("lock", DOMAIN, f"{prefix}_lock_1")
     assert hass.states.get(lock_entity).state == "locked"
-    input_entity = registry.async_get_entity_id(
-        "binary_sensor", DOMAIN, f"{prefix}_io_input1"
+
+    # Privacy-sensitive and niche entities are registered but disabled by
+    # default, so they have no state until a user opts in.
+    for key in ("keypad", "last_card", "last_user", "last_key", "io_input1", "sip_1"):
+        entry = registry.async_get(
+            registry.async_get_entity_id("binary_sensor", DOMAIN, f"{prefix}_{key}")
+            or registry.async_get_entity_id("sensor", DOMAIN, f"{prefix}_{key}")
+            or registry.async_get_entity_id("event", DOMAIN, f"{prefix}_{key}")
+        )
+        assert entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+
+    # The redundant call binary sensors stay enabled but hidden from dashboards.
+    ringing_entry = registry.async_get(
+        registry.async_get_entity_id("binary_sensor", DOMAIN, f"{prefix}_ringing")
     )
-    assert hass.states.get(input_entity).state == "on"
+    assert ringing_entry.disabled_by is None
+    assert ringing_entry.hidden_by is er.RegistryEntryHider.INTEGRATION
 
 
 async def test_device_event_fires_bus_and_updates_state(
