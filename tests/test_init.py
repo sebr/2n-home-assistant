@@ -260,3 +260,41 @@ async def test_answer_service_defaults_to_ringing_session(
         DOMAIN, "answer", {"device_id": device.id}, blocking=True
     )
     patch_api.answer_call.assert_called_once_with(1)
+
+
+async def test_switch_command_coerces_string_values(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
+) -> None:
+    """Templated string values are coerced like other services do."""
+    from homeassistant.helpers import device_registry as dr
+
+    device = dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, setup_entry.entry_id)}
+    )
+    await hass.services.async_call(
+        DOMAIN,
+        "switch_command",
+        {"device_id": device.id, "switch": "1", "action": "trigger"},
+        blocking=True,
+    )
+    patch_api.set_switch.assert_called_once_with(1, "trigger", None)
+
+
+async def test_privilege_error_does_not_trigger_reauth(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
+) -> None:
+    """Narrowed privileges degrade the update instead of prompting re-auth."""
+    from custom_components.two_n_intercom.hapi.exceptions import TwoNPrivilegeError
+
+    coordinator = setup_entry.runtime_data
+    patch_api.get_switch_status.side_effect = TwoNPrivilegeError("no privilege")
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert coordinator.last_update_success is False
+    assert not [
+        flow
+        for flow in hass.config_entries.flow.async_progress()
+        if flow["context"].get("source") == "reauth"
+    ]

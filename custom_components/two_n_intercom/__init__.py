@@ -10,16 +10,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 
+from .const import DOMAIN
 from .coordinator import TwoNUpdateCoordinator
 from .entity import intercom_device_info
 from .services import async_register_services
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.typing import ConfigType
 
     from .data import TwoNConfigEntry
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -30,6 +35,12 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
+
+
+async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
+    """Register domain services once, independent of config entries."""
+    async_register_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: TwoNConfigEntry) -> bool:
@@ -49,8 +60,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: TwoNConfigEntry) -> bool
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
-    async_register_services(hass)
 
     return True
 

@@ -431,6 +431,9 @@ class TwoNApiClient:
         if filter_events:
             params["filter"] = ",".join(filter_events)
         result = await self._api_call("/api/log/subscribe", params=params)
+        if not isinstance(result, dict) or "id" not in result:
+            msg = f"Unexpected log/subscribe response: {result!r}"
+            raise TwoNError(msg)
         return result["id"]
 
     async def log_pull(
@@ -444,6 +447,9 @@ class TwoNApiClient:
             params={"id": subscription_id, "timeout": timeout},
             timeout=LOG_PULL_HTTP_TIMEOUT,
         )
+        if not isinstance(result, dict):
+            msg = f"Unexpected log/pull response: {result!r}"
+            raise TwoNError(msg)
         return [TwoNEvent.from_dict(item) for item in result.get("events", [])]
 
     async def log_unsubscribe(self, subscription_id: int) -> None:
@@ -503,19 +509,22 @@ class TwoNApiClient:
                     with contextlib.suppress(TwoNError):
                         await self.log_unsubscribe(subscription_id)
                 raise
+            except (TwoNNotSupportedError, TwoNPrivilegeError) as err:
+                # A privilege error means the credentials are valid but the
+                # account can't read the log; neither case warrants re-auth.
+                LOGGER.warning(
+                    "Event logging is not available on %s (%s); "
+                    "real-time events unavailable",
+                    self._base,
+                    err,
+                )
+                return
             except TwoNAuthError:
                 LOGGER.warning(
                     "Authentication failed in event listener for %s", self._base
                 )
                 for auth_callback in self._auth_error_callbacks:
                     auth_callback()
-                return
-            except TwoNNotSupportedError:
-                LOGGER.warning(
-                    "Event logging is not supported or disabled on %s; "
-                    "real-time events unavailable",
-                    self._base,
-                )
                 return
             except TwoNError as err:
                 # Covers connection drops and expired subscriptions; both are
@@ -524,6 +533,16 @@ class TwoNApiClient:
                     "Event listener error on %s: %s; retrying in %ss",
                     self._base,
                     err,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, RECONNECT_DELAY_MAX)
+            except Exception:
+                # The listener must never die silently on an unexpected
+                # payload shape or bug; log loudly and keep retrying.
+                LOGGER.exception(
+                    "Unexpected error in event listener for %s; retrying in %ss",
+                    self._base,
                     delay,
                 )
                 await asyncio.sleep(delay)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import httpx
 from homeassistant.components.camera import Camera
 from homeassistant.helpers.aiohttp_client import async_aiohttp_proxy_stream
 
@@ -12,7 +13,6 @@ from .entity import TwoNEntity
 from .hapi.exceptions import TwoNError
 
 if TYPE_CHECKING:
-    import httpx
     from aiohttp import web
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -106,20 +106,22 @@ class TwoNCamera(TwoNEntity, Camera):
                 width=width, height=height, fps=MJPEG_FPS
             ) as response:
                 content_type = response.headers.get("content-type", "")
-                if response.status_code != 200 or "multipart" not in content_type:
-                    LOGGER.debug(
-                        "MJPEG stream unavailable (HTTP %s, %s); falling back "
-                        "to snapshot polling",
-                        response.status_code,
+                if response.status_code == 200 and "multipart" in content_type:
+                    return await async_aiohttp_proxy_stream(
+                        self.hass,
+                        request,
+                        _HttpxStreamReader(response),
                         content_type,
                     )
-                    return await super().handle_async_mjpeg_stream(request)
-                return await async_aiohttp_proxy_stream(
-                    self.hass,
-                    request,
-                    _HttpxStreamReader(response),
+                LOGGER.debug(
+                    "MJPEG stream unavailable (HTTP %s, %s); falling back "
+                    "to snapshot polling",
+                    response.status_code,
                     content_type,
                 )
-        except TwoNError as err:
+        except (TwoNError, httpx.HTTPError) as err:
             LOGGER.warning("Failed to open MJPEG stream: %s", err)
-            return await super().handle_async_mjpeg_stream(request)
+        # Fall back outside the `async with` so the rejected device
+        # connection is closed before the long-lived still-image stream
+        # starts (2N devices cap concurrent HAPI connections).
+        return await super().handle_async_mjpeg_stream(request)

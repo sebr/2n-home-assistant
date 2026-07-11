@@ -54,9 +54,11 @@ HANGUP_SCHEMA = vol.Schema(
 SWITCH_COMMAND_SCHEMA = vol.Schema(
     {
         **_BASE_SCHEMA,
-        vol.Required(ATTR_SWITCH): vol.All(int, vol.Range(min=1, max=4)),
+        vol.Required(ATTR_SWITCH): vol.All(cv.positive_int, vol.Range(min=1, max=4)),
         vol.Required(ATTR_ACTION): vol.In(SWITCH_ACTIONS),
-        vol.Optional(ATTR_TIMEOUT): vol.All(int, vol.Range(min=1, max=86400)),
+        vol.Optional(ATTR_TIMEOUT): vol.All(
+            cv.positive_int, vol.Range(min=1, max=86400)
+        ),
     }
 )
 AUDIO_TEST_SCHEMA = vol.Schema(_BASE_SCHEMA)
@@ -64,7 +66,9 @@ DISPLAY_TEXT_SCHEMA = vol.Schema(
     {
         **_BASE_SCHEMA,
         vol.Required(ATTR_TEXT): cv.string,
-        vol.Optional(ATTR_TIMEOUT): vol.All(int, vol.Range(min=1, max=1209600)),
+        vol.Optional(ATTR_TIMEOUT): vol.All(
+            cv.positive_int, vol.Range(min=1, max=1209600)
+        ),
     }
 )
 AUTOMATION_TRIGGER_SCHEMA = vol.Schema(

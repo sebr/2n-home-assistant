@@ -78,6 +78,12 @@ class TwoNFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 if unique_id:
                     await self.async_set_unique_id(unique_id)
                     self._abort_if_unique_id_configured()
+                else:
+                    # No serial/MAC available (restricted account or old
+                    # firmware); fall back to the host to block duplicates.
+                    self._async_abort_entries_match(
+                        {CONF_HOST: cleaned_input[CONF_HOST]}
+                    )
                 return self.async_create_entry(
                     title=info.device_name or "2N Intercom",
                     data=cleaned_input,

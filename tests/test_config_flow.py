@@ -101,3 +101,26 @@ async def test_user_flow_duplicate_aborts(
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_user_flow_duplicate_host_without_unique_id_aborts(
+    hass: HomeAssistant, flow_api: MagicMock, mock_config_entry_data: dict[str, Any]
+) -> None:
+    """Without a serial/MAC, a matching host still blocks duplicates."""
+    from dataclasses import replace
+
+    flow_api.get_system_info.return_value = replace(
+        flow_api.get_system_info.return_value,
+        serial_number=None,
+        mac_addr=None,
+    )
+    MockConfigEntry(domain=DOMAIN, data=mock_config_entry_data).add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input=USER_INPUT
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"

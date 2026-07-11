@@ -107,6 +107,9 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
 
         try:
             self.system_info = await self.api.get_system_info()
+        except TwoNPrivilegeError as err:
+            msg = f"Unable to fetch device info: {err}"
+            raise UpdateFailed(msg) from err
         except TwoNAuthError as err:
             raise ConfigEntryAuthFailed(err) from err
         except TwoNError as err:
@@ -203,6 +206,11 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
                     account.account: account
                     for account in await self.api.get_phone_status()
                 }
+        except TwoNPrivilegeError as err:
+            # Privileges were narrowed on the device after setup. The
+            # credentials are still valid, so a re-auth prompt would be
+            # wrong; surface as a normal update failure instead.
+            raise UpdateFailed(err) from err
         except TwoNAuthError as err:
             raise ConfigEntryAuthFailed(err) from err
         except TwoNError as err:
