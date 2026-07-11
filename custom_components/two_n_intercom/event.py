@@ -81,7 +81,7 @@ class TwoNDoorbellEvent(TwoNEventEntity):
     """Doorbell event: a quick dial button (%1-%150) was pressed."""
 
     _attr_device_class = EventDeviceClass.DOORBELL
-    _attr_event_types = ["pressed"]  # noqa: RUF012
+    _attr_event_types = ["ring"]  # noqa: RUF012
     _attr_translation_key = "doorbell"
 
     def __init__(self, coordinator: TwoNUpdateCoordinator) -> None:
@@ -92,7 +92,7 @@ class TwoNDoorbellEvent(TwoNEventEntity):
     def _handle_device_event(self, event: TwoNEvent) -> None:
         key = event.params.get("key", "")
         if event.event == "KeyPressed" and key.startswith("%"):
-            self._trigger_event("pressed", {"button": key})
+            self._trigger_event("ring", {"button": key})
             self.async_write_ha_state()
 
 
