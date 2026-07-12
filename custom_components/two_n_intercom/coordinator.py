@@ -23,7 +23,6 @@ from .const import (
     ATTR_DEVICE_NAME,
     ATTR_EVENT,
     ATTR_PARAMS,
-    CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_VERIFY_SSL,
@@ -60,12 +59,11 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
 
     def __init__(self, hass: HomeAssistant, entry: TwoNConfigEntry) -> None:
         """Initialize the coordinator and its API client."""
-        scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         super().__init__(
             hass=hass,
             logger=LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=scan_interval),
+            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
             always_update=False,
         )
         self.config_entry = entry

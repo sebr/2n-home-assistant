@@ -14,9 +14,7 @@ from homeassistant.helpers.httpx_client import get_async_client
 
 from .const import (
     CONF_LOCK_SWITCHES,
-    CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
-    DEFAULT_SCAN_INTERVAL,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     LOGGER,
@@ -231,22 +229,7 @@ class TwoNOptionsFlowHandler(OptionsFlow):
             if caps.enabled
         ]
 
-        schema: dict[Any, Any] = {
-            vol.Required(
-                CONF_SCAN_INTERVAL,
-                default=self.config_entry.options.get(
-                    CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-                ),
-            ): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=5,
-                    max=300,
-                    step=5,
-                    unit_of_measurement="s",
-                    mode=selector.NumberSelectorMode.SLIDER,
-                ),
-            ),
-        }
+        schema: dict[Any, Any] = {}
         if switch_options:
             schema[
                 vol.Required(
