@@ -105,8 +105,6 @@ Copy `custom_components/two_n_intercom` into your Home Assistant
 
 ### Options
 
-- **Polling interval** — how often full state is polled (default 30 s).
-  Real-time events arrive instantly regardless of this setting.
 - **Switches shown as door locks** — which 2N switches get a lock entity
   (all enabled switches by default).
 
