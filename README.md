@@ -19,10 +19,10 @@ integration probes the device's capabilities and event catalog at setup.
 | `lock` | A door lock per configured switch (unlock activates the switch; `open` pulses it) |
 | `switch` | Each 2N switch, plus each logic output relay † |
 | `button` | Trigger per switch, device restart |
-| `camera` | Snapshots plus the device's native MJPEG stream |
+| `camera` | Snapshots plus the device's native MJPEG stream, or its RTSP stream if you pick one in the options |
 | `binary_sensor` | Motion, noise †, tamper, door state, unauthorized door open, door open too long, switches blocked, call in progress ‡, ringing ‡, logic inputs †, SIP registration † |
 | `sensor` | Call state, last restart, last card †, last user †, last key † |
-| `event` | Doorbell (quick dial buttons), keypad †, access (card/code/fingerprint/mobile key), call state |
+| `event` | Doorbell (quick dial buttons), keypad †, access (card/code/fingerprint/mobile key), call state, exit button (REX), silent alarm |
 
 **† Disabled by default.** These are either privacy-sensitive (the keypad
 event and *last key* record individual keypresses — including PIN digits — to
@@ -65,6 +65,9 @@ actions:
       message: "Card {{ trigger.event.data.params.uid }} presented"
 ```
 
+Each bus event carries `device_id`, `device_name`, `event`, `params`, and the
+device's `event_id` and `utc_time`.
+
 ## Device setup
 
 On the intercom's web interface:
@@ -97,6 +100,11 @@ Copy `custom_components/two_n_intercom` into your Home Assistant
 
 ## Configuration
 
+Home Assistant finds 2N intercoms on your network by their MAC address prefix
+(`7C:1E:B3`) through DHCP discovery and offers to set them up. If a configured
+intercom moves to a new IP address, discovery updates the stored address. You
+can also add one by hand:
+
 1. **Settings → Devices & Services → Add Integration → 2N Intercom**.
 2. Enter the device's IP address or hostname and the HTTP API account
    credentials.
@@ -105,16 +113,19 @@ Copy `custom_components/two_n_intercom` into your Home Assistant
 
 ### Options
 
+- **Live video stream** — *MJPEG over HTTP* (default), or one of the device's
+  RTSP streams (H.264, H.265, MJPEG). See [Live video](#live-video).
 - **Switches shown as door locks** — which 2N switches get a lock entity
   (all enabled switches by default).
 
 ## Live video
 
-The camera entity proxies the device's MJPEG stream and serves snapshots. For
-low-latency H.264 video (e.g. in a doorbell card, with two-way audio via
-go2rtc/WebRTC), enable **Services → Streaming → RTSP** on the device and add a
-[Generic Camera](https://www.home-assistant.io/integrations/generic/) or
-go2rtc stream pointing at `rtsp://<device-ip>/h264_stream`.
+By default the camera entity proxies the device's MJPEG stream and serves
+snapshots. For H.264 video, enable **Services → Streaming → RTSP** on the
+device, then choose an RTSP stream under the integration's **Options**. The
+camera then hands `rtsp://<device-ip>:554/h264_stream` (with the API account's
+credentials) to Home Assistant's `stream` integration, which `default_config`
+loads. For two-way audio, point go2rtc/WebRTC at the same URL.
 
 ## Development
 

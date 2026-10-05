@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ipaddress import ip_address
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -9,15 +10,20 @@ from homeassistant import config_entries
 from homeassistant.config_entries import OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import selector
 from homeassistant.helpers.httpx_client import get_async_client
+from yarl import URL
 
 from .const import (
     CONF_LOCK_SWITCHES,
+    CONF_RTSP_STREAM,
     CONF_VERIFY_SSL,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     LOGGER,
+    RTSP_STREAM_NONE,
+    RTSP_STREAMS,
 )
 from .hapi.api import TwoNApiClient
 from .hapi.exceptions import (
@@ -30,7 +36,8 @@ from .hapi.exceptions import (
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from homeassistant.config_entries import ConfigFlowResult
+    from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
+    from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 
     from .hapi.models import SystemInfo
 
@@ -40,6 +47,10 @@ class TwoNFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the flow."""
+        self._discovered_host: str | None = None
+
     @staticmethod
     @callback
     def async_get_options_flow(
@@ -47,6 +58,44 @@ class TwoNFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> TwoNOptionsFlowHandler:
         """Get the options flow for this handler."""
         return TwoNOptionsFlowHandler()
+
+    async def async_step_dhcp(
+        self, discovery_info: DhcpServiceInfo
+    ) -> ConfigFlowResult:
+        """Handle a 2N device found by its MAC prefix on the network."""
+        mac = dr.format_mac(discovery_info.macaddress)
+        entry = self._entry_for_mac(mac)
+        if entry is not None:
+            new_host = _host_with_ip(entry.data[CONF_HOST], discovery_info.ip)
+            if new_host is None:
+                return self.async_abort(reason="already_configured")
+            return self.async_update_reload_and_abort(
+                entry, data_updates={CONF_HOST: new_host}, reason="already_configured"
+            )
+
+        # Entries take the serial number as unique id once set up; the MAC
+        # only dedupes discoveries and lets the user ignore this one.
+        await self.async_set_unique_id(mac)
+        self._abort_if_unique_id_configured()
+        self._discovered_host = f"https://{discovery_info.ip}"
+        self._async_abort_entries_match({CONF_HOST: self._discovered_host})
+        self._async_abort_entries_match({CONF_HOST: f"http://{discovery_info.ip}"})
+
+        self.context["title_placeholders"] = {
+            "name": discovery_info.hostname or discovery_info.ip
+        }
+        return await self.async_step_user()
+
+    def _entry_for_mac(self, mac: str) -> ConfigEntry | None:
+        """Return the configured entry whose device has this MAC, if any."""
+        device_registry = dr.async_get(self.hass)
+        for entry in self._async_current_entries(include_ignore=False):
+            for device in dr.async_entries_for_config_entry(
+                device_registry, entry.entry_id
+            ):
+                if (dr.CONNECTION_NETWORK_MAC, mac) in device.connections:
+                    return entry
+        return None
 
     async def async_step_user(
         self,
@@ -93,7 +142,9 @@ class TwoNFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(
                         CONF_HOST,
-                        default=(user_input or {}).get(CONF_HOST, vol.UNDEFINED),
+                        default=(user_input or {}).get(
+                            CONF_HOST, self._discovered_host or vol.UNDEFINED
+                        ),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.URL,
@@ -230,6 +281,21 @@ class TwoNOptionsFlowHandler(OptionsFlow):
         ]
 
         schema: dict[Any, Any] = {}
+        if coordinator is None or coordinator.has_camera:
+            schema[
+                vol.Required(
+                    CONF_RTSP_STREAM,
+                    default=self.config_entry.options.get(
+                        CONF_RTSP_STREAM, RTSP_STREAM_NONE
+                    ),
+                )
+            ] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[RTSP_STREAM_NONE, *RTSP_STREAMS],
+                    translation_key=CONF_RTSP_STREAM,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                ),
+            )
         if switch_options:
             schema[
                 vol.Required(
@@ -251,3 +317,19 @@ class TwoNOptionsFlowHandler(OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(schema),
         )
+
+
+def _host_with_ip(host: str, ip: str) -> str | None:
+    """
+    Return the stored host URL pointed at a new IP, or None to leave it.
+
+    Hosts entered as a name are left alone; the name still resolves.
+    """
+    url = URL(host)
+    try:
+        current = ip_address(url.host or "")
+    except ValueError:
+        return None
+    if str(current) == ip:
+        return None
+    return str(url.with_host(ip))

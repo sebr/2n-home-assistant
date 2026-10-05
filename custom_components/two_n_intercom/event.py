@@ -54,6 +54,10 @@ async def async_setup_entry(
         entities.append(TwoNAccessEvent(coordinator))
     if "CallStateChanged" in supported:
         entities.append(TwoNCallEvent(coordinator))
+    if "RexActivated" in supported:
+        entities.append(TwoNExitButtonEvent(coordinator))
+    if "SilentAlarm" in supported:
+        entities.append(TwoNSilentAlarmEvent(coordinator))
     async_add_entities(entities)
 
 
@@ -150,4 +154,38 @@ class TwoNCallEvent(TwoNEventEntity):
         state = event.params.get("state")
         if event.event == "CallStateChanged" and state in CALL_STATES:
             self._trigger_event(state, dict(event.params))
+            self.async_write_ha_state()
+
+
+class TwoNExitButtonEvent(TwoNEventEntity):
+    """Exit button event: the request-to-exit (REX) input was activated."""
+
+    _attr_event_types = ["pressed"]  # noqa: RUF012
+    _attr_translation_key = "exit_button"
+
+    def __init__(self, coordinator: TwoNUpdateCoordinator) -> None:
+        """Initialize the exit button event entity."""
+        super().__init__(coordinator, "exit_button")
+
+    @callback
+    def _handle_device_event(self, event: TwoNEvent) -> None:
+        if event.event == "RexActivated":
+            self._trigger_event("pressed", dict(event.params))
+            self.async_write_ha_state()
+
+
+class TwoNSilentAlarmEvent(TwoNEventEntity):
+    """Silent alarm event: the device raised a silent (duress) alarm."""
+
+    _attr_event_types = ["triggered"]  # noqa: RUF012
+    _attr_translation_key = "silent_alarm"
+
+    def __init__(self, coordinator: TwoNUpdateCoordinator) -> None:
+        """Initialize the silent alarm event entity."""
+        super().__init__(coordinator, "silent_alarm")
+
+    @callback
+    def _handle_device_event(self, event: TwoNEvent) -> None:
+        if event.event == "SilentAlarm":
+            self._trigger_event("triggered", dict(event.params))
             self.async_write_ha_state()

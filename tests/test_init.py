@@ -81,6 +81,8 @@ async def test_entities_created(
         f"{prefix}_last_card",
         f"{prefix}_last_user",
         f"{prefix}_last_key",
+        f"{prefix}_exit_button",
+        f"{prefix}_silent_alarm",
     }
     assert expected <= unique_ids
     # Switch 2 is disabled on the device and must not create entities.
@@ -133,6 +135,8 @@ async def test_device_event_fires_bus_and_updates_state(
     assert len(bus_events) == 1
     assert bus_events[0].data["event"] == "SwitchStateChanged"
     assert bus_events[0].data["params"] == {"switch": 1, "state": True}
+    assert bus_events[0].data["event_id"] == 10
+    assert bus_events[0].data["utc_time"] == 1752192000
     assert coordinator.data.switches[1].active is True
 
     registry = er.async_get(hass)
@@ -179,6 +183,76 @@ async def test_doorbell_event_entity(
     state = hass.states.get(doorbell_entity)
     assert state.attributes["event_type"] == "ring"
     assert state.attributes["button"] == "%1"
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ("RexActivated", "exit_button", "pressed"),
+        ("SilentAlarm", "silent_alarm", "triggered"),
+    ],
+)
+async def test_alarm_and_exit_event_entities(
+    hass: HomeAssistant,
+    setup_entry: MockConfigEntry,
+    patch_api: MagicMock,
+    case: tuple[str, str, str],
+) -> None:
+    """Exit button and silent alarm device events trigger their entities."""
+    device_event, key, event_type = case
+    event_callback = patch_api.register_event_callback.call_args[0][0]
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "event", DOMAIN, f"{setup_entry.entry_id}_{key}"
+    )
+
+    event_callback(TwoNEvent(id=16, event=device_event, params={"rex": 1}))
+    await hass.async_block_till_done()
+
+    state = hass.states.get(entity_id)
+    assert state.attributes["event_type"] == event_type
+    assert state.attributes["rex"] == 1
+
+
+async def test_camera_rtsp_stream_source(
+    hass: HomeAssistant, patch_api: MagicMock, mock_config_entry_data: dict[str, Any]
+) -> None:
+    """Choosing an RTSP stream gives the camera an RTSP source URL."""
+    from homeassistant.components.camera import (
+        CameraEntityFeature,
+        async_get_stream_source,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=mock_config_entry_data,
+        options={"rtsp_stream": "h264_stream"},
+        unique_id="00-0000-0005",
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "camera", DOMAIN, f"{entry.entry_id}_camera"
+    )
+    state = hass.states.get(entity_id)
+    assert state.attributes["supported_features"] == CameraEntityFeature.STREAM
+    assert (
+        await async_get_stream_source(hass, entity_id)
+        == "rtsp://hapi:secret@192.168.1.10:554/h264_stream"
+    )
+
+
+async def test_camera_without_rtsp_has_no_stream_source(
+    hass: HomeAssistant, setup_entry: MockConfigEntry
+) -> None:
+    """By default the camera stays on MJPEG over HTTP."""
+    from homeassistant.components.camera import async_get_stream_source
+
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "camera", DOMAIN, f"{setup_entry.entry_id}_camera"
+    )
+    assert await async_get_stream_source(hass, entity_id) is None
 
 
 async def test_call_session_updates_sensors(

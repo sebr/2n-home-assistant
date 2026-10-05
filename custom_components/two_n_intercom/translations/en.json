@@ -32,17 +32,30 @@
     "abort": {
       "already_configured": "This intercom is already configured.",
       "reauth_successful": "Re-authentication was successful."
-    }
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {
       "init": {
         "data": {
+          "rtsp_stream": "Live video stream",
           "lock_switches": "Switches shown as door locks"
         },
         "data_description": {
+          "rtsp_stream": "Play the device's RTSP stream in Home Assistant instead of the HTTP MJPEG stream. Turn on Services → Streaming → RTSP on the device first. Needs the stream integration, which default_config loads.",
           "lock_switches": "Each selected switch is exposed as a lock entity in addition to its switch entity."
         }
+      }
+    }
+  },
+  "selector": {
+    "rtsp_stream": {
+      "options": {
+        "none": "MJPEG over HTTP",
+        "h264_stream": "RTSP, H.264",
+        "h265_stream": "RTSP, H.265",
+        "mjpeg_stream": "RTSP, MJPEG"
       }
     }
   },
@@ -148,6 +161,26 @@
       },
       "call": {
         "name": "Call"
+      },
+      "exit_button": {
+        "name": "Exit button",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "pressed": "Pressed"
+            }
+          }
+        }
+      },
+      "silent_alarm": {
+        "name": "Silent alarm",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "triggered": "Triggered"
+            }
+          }
+        }
       }
     }
   },
