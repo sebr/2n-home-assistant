@@ -187,6 +187,48 @@ async def test_doorbell_event_entity(
     assert state.attributes["button"] == "%1"
 
 
+async def test_camera_rtsp_stream_source(
+    hass: HomeAssistant, patch_api: MagicMock, mock_config_entry_data: dict[str, Any]
+) -> None:
+    """Choosing an RTSP stream gives the camera an RTSP source URL."""
+    from homeassistant.components.camera import (
+        CameraEntityFeature,
+        async_get_stream_source,
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=mock_config_entry_data,
+        options={"rtsp_stream": "h264_stream"},
+        unique_id="00-0000-0005",
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "camera", DOMAIN, f"{entry.entry_id}_camera"
+    )
+    state = hass.states.get(entity_id)
+    assert state.attributes["supported_features"] == CameraEntityFeature.STREAM
+    assert (
+        await async_get_stream_source(hass, entity_id)
+        == "rtsp://hapi:secret@192.168.1.10:554/h264_stream"
+    )
+
+
+async def test_camera_without_rtsp_has_no_stream_source(
+    hass: HomeAssistant, setup_entry: MockConfigEntry
+) -> None:
+    """By default the camera stays on MJPEG over HTTP."""
+    from homeassistant.components.camera import async_get_stream_source
+
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "camera", DOMAIN, f"{setup_entry.entry_id}_camera"
+    )
+    assert await async_get_stream_source(hass, entity_id) is None
+
+
 async def test_call_session_updates_sensors(
     hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
 ) -> None:

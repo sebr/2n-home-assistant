@@ -14,10 +14,13 @@ from homeassistant.helpers.httpx_client import get_async_client
 
 from .const import (
     CONF_LOCK_SWITCHES,
+    CONF_RTSP_STREAM,
     CONF_VERIFY_SSL,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     LOGGER,
+    RTSP_STREAM_NONE,
+    RTSP_STREAMS,
 )
 from .hapi.api import TwoNApiClient
 from .hapi.exceptions import (
@@ -230,6 +233,21 @@ class TwoNOptionsFlowHandler(OptionsFlow):
         ]
 
         schema: dict[Any, Any] = {}
+        if coordinator is None or coordinator.has_camera:
+            schema[
+                vol.Required(
+                    CONF_RTSP_STREAM,
+                    default=self.config_entry.options.get(
+                        CONF_RTSP_STREAM, RTSP_STREAM_NONE
+                    ),
+                )
+            ] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[RTSP_STREAM_NONE, *RTSP_STREAMS],
+                    translation_key=CONF_RTSP_STREAM,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                ),
+            )
         if switch_options:
             schema[
                 vol.Required(

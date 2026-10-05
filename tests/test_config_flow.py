@@ -130,3 +130,24 @@ async def test_user_flow_duplicate_host_without_unique_id_aborts(
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_options_flow_rtsp_stream(
+    hass: HomeAssistant, patch_api: MagicMock, mock_config_entry_data: dict[str, Any]
+) -> None:
+    """The options flow stores the chosen RTSP stream."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, data=mock_config_entry_data, unique_id="00-0000-0005"
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={"rtsp_stream": "h264_stream", "lock_switches": ["1"]},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["rtsp_stream"] == "h264_stream"
