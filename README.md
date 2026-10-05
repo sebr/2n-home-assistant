@@ -31,6 +31,9 @@ history; *last card*/*last user* record RFID UIDs and user names) or niche
 in *Settings → Devices & Services → 2N Intercom → entity → Enable* when you
 need them.
 
+The *access* event is on by default but leaves out the code typed at the
+keypad, so PINs never reach state history.
+
 **‡ Hidden by default.** The *call in progress* and *ringing* binary sensors
 are redundant with the *call state* sensor and *call* event, so they're kept
 for automations but hidden from auto-generated dashboards.

@@ -34,6 +34,10 @@ ACCESS_EVENT_TYPES = {
     "UserRejected": "rejected",
 }
 
+# Event params never copied to access event attributes. CodeEntered sends
+# the typed code in clear, and event attributes are kept in state history.
+ACCESS_PRIVATE_PARAMS = frozenset({"code"})
+
 CALL_STATES = ["connecting", "ringing", "connected", "terminated"]
 
 
@@ -135,7 +139,12 @@ class TwoNAccessEvent(TwoNEventEntity):
     def _handle_device_event(self, event: TwoNEvent) -> None:
         event_type = ACCESS_EVENT_TYPES.get(event.event)
         if event_type is not None:
-            self._trigger_event(event_type, dict(event.params))
+            attributes = {
+                key: value
+                for key, value in event.params.items()
+                if key not in ACCESS_PRIVATE_PARAMS
+            }
+            self._trigger_event(event_type, attributes)
             self.async_write_ha_state()
 
 
