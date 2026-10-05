@@ -84,16 +84,6 @@ On the intercom's web interface:
 
 ## Installation
 
-This integration uses the domain `2n_intercom`, the same as
-[genka13/ha-2n-intercom](https://github.com/genka13/ha-2n-intercom), so it
-shows that integration's icon and logo from the Home Assistant brands
-repository. You can't install both at once.
-
-Versions before 0.2.0 used the domain `two_n_intercom`. To upgrade, delete
-the old integration entry, remove `custom_components/two_n_intercom`, install
-this version and add the device again. Update any automations that call
-`two_n_intercom.*` services or listen for `two_n_intercom_event`.
-
 ### HACS (recommended)
 
 1. Add this repository as a custom repository in HACS (category
