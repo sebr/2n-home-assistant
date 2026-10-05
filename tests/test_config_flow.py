@@ -10,6 +10,7 @@ import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 _const = import_module("custom_components.2n_intercom.const")
@@ -136,6 +137,37 @@ async def test_options_flow_rtsp_stream(
     hass: HomeAssistant, patch_api: MagicMock, mock_config_entry_data: dict[str, Any]
 ) -> None:
     """The options flow stores the chosen RTSP stream."""
+
+
+DHCP_INFO = DhcpServiceInfo(
+    ip="192.168.1.10", hostname="2n-front-door", macaddress="fc1eb3000005"
+)
+
+
+async def test_dhcp_new_device_prefills_host(
+    hass: HomeAssistant, flow_api: MagicMock, patch_api: MagicMock
+) -> None:
+    """A discovered device opens the user form with its address filled in."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_DHCP}, data=DHCP_INFO
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+    host_key = next(key for key in result["data_schema"].schema if key == "host")
+    assert host_key.default() == "https://192.168.1.10"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={**USER_INPUT, "host": "https://192.168.1.10"},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["result"].unique_id == "00-0000-0005"
+
+
+async def test_dhcp_known_device_updates_ip(
+    hass: HomeAssistant, patch_api: MagicMock, mock_config_entry_data: dict[str, Any]
+) -> None:
+    """A configured device seen at a new IP gets its host updated."""
     entry = MockConfigEntry(
         domain=DOMAIN, data=mock_config_entry_data, unique_id="00-0000-0005"
     )
@@ -151,3 +183,33 @@ async def test_options_flow_rtsp_stream(
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["rtsp_stream"] == "h264_stream"
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_DHCP},
+        data=DhcpServiceInfo(
+            ip="192.168.1.20", hostname="2n", macaddress="fc1eb3000005"
+        ),
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert entry.data["host"] == "https://192.168.1.20"
+
+
+async def test_dhcp_known_device_same_ip_aborts(
+    hass: HomeAssistant, patch_api: MagicMock, mock_config_entry_data: dict[str, Any]
+) -> None:
+    """A configured device at its known IP aborts without changes."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, data=mock_config_entry_data, unique_id="00-0000-0005"
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_DHCP}, data=DHCP_INFO
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert entry.data["host"] == "https://192.168.1.10"
