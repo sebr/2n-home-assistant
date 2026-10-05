@@ -261,6 +261,30 @@ async def test_alarm_and_exit_event_entities(
     assert state.attributes["rex"] == 1
 
 
+async def test_access_event_drops_entered_code(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
+) -> None:
+    """A typed code never reaches the access event's attributes."""
+    event_callback = patch_api.register_event_callback.call_args[0][0]
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "event", DOMAIN, f"{setup_entry.entry_id}_access"
+    )
+
+    event_callback(
+        TwoNEvent(
+            id=17,
+            event="CodeEntered",
+            params={"session": 1, "code": "1234", "valid": False},
+        )
+    )
+    await hass.async_block_till_done()
+
+    state = hass.states.get(entity_id)
+    assert state.attributes["event_type"] == "code"
+    assert state.attributes["valid"] is False
+    assert "code" not in state.attributes
+
+
 async def test_call_session_updates_sensors(
     hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
 ) -> None:
