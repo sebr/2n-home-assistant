@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -11,18 +12,19 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.two_n_intercom.const import DOMAIN
-from custom_components.two_n_intercom.hapi.exceptions import (
-    TwoNAuthError,
-    TwoNConnectionError,
-)
+_const = import_module("custom_components.2n_intercom.const")
+DOMAIN = _const.DOMAIN
+_exceptions = import_module("custom_components.2n_intercom.hapi.exceptions")
+TwoNAuthError = _exceptions.TwoNAuthError
+TwoNConnectionError = _exceptions.TwoNConnectionError
 
 
 @pytest.fixture
 def flow_api(mock_api: MagicMock) -> Any:
     """Patch the config flow's API client construction."""
-    with patch(
-        "custom_components.two_n_intercom.config_flow.TwoNApiClient",
+    with patch.object(
+        import_module("custom_components.2n_intercom.config_flow"),
+        "TwoNApiClient",
         return_value=mock_api,
     ):
         yield mock_api

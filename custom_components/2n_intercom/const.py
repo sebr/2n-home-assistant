@@ -4,7 +4,7 @@ from logging import Logger, getLogger
 
 LOGGER: Logger = getLogger(__package__)
 
-DOMAIN = "two_n_intercom"
+DOMAIN = "2n_intercom"
 MANUFACTURER = "2N"
 
 # Fired on the Home Assistant event bus for every device event.

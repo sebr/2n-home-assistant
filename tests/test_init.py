@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -11,10 +12,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.two_n_intercom.const import DOMAIN, EVENT_TWO_N_EVENT
-from custom_components.two_n_intercom.hapi.models import TwoNEvent
-
 from .conftest import make_call_session
+
+_const = import_module("custom_components.2n_intercom.const")
+DOMAIN = _const.DOMAIN
+EVENT_TWO_N_EVENT = _const.EVENT_TWO_N_EVENT
+_models = import_module("custom_components.2n_intercom.hapi.models")
+TwoNEvent = _models.TwoNEvent
+_exceptions = import_module("custom_components.2n_intercom.hapi.exceptions")
+TwoNPrivilegeError = _exceptions.TwoNPrivilegeError
 
 
 @pytest.fixture
@@ -297,8 +303,6 @@ async def test_privilege_error_does_not_trigger_reauth(
     hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
 ) -> None:
     """Narrowed privileges degrade the update instead of prompting re-auth."""
-    from custom_components.two_n_intercom.hapi.exceptions import TwoNPrivilegeError
-
     coordinator = setup_entry.runtime_data
     patch_api.get_switch_status.side_effect = TwoNPrivilegeError("no privilege")
 

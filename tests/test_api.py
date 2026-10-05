@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+from importlib import import_module
+
 import httpx
 import pytest
 import respx
 
-from custom_components.two_n_intercom.hapi.api import TwoNApiClient
-from custom_components.two_n_intercom.hapi.exceptions import (
-    TwoNApiError,
-    TwoNAuthError,
-    TwoNConnectionError,
-    TwoNNotSupportedError,
-    TwoNPrivilegeError,
-)
+_api = import_module("custom_components.2n_intercom.hapi.api")
+TwoNApiClient = _api.TwoNApiClient
+_exceptions = import_module("custom_components.2n_intercom.hapi.exceptions")
+TwoNApiError = _exceptions.TwoNApiError
+TwoNAuthError = _exceptions.TwoNAuthError
+TwoNConnectionError = _exceptions.TwoNConnectionError
+TwoNNotSupportedError = _exceptions.TwoNNotSupportedError
+TwoNPrivilegeError = _exceptions.TwoNPrivilegeError
+
 
 BASE = "https://device.local"
 

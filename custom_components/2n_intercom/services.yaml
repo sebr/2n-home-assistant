@@ -4,7 +4,7 @@ dial:
       required: true
       selector:
         device:
-          integration: two_n_intercom
+          integration: 2n_intercom
     number:
       required: true
       example: "sip:1234@192.168.1.10"
@@ -17,7 +17,7 @@ answer:
       required: true
       selector:
         device:
-          integration: two_n_intercom
+          integration: 2n_intercom
     session:
       required: false
       selector:
@@ -32,7 +32,7 @@ hangup:
       required: true
       selector:
         device:
-          integration: two_n_intercom
+          integration: 2n_intercom
     session:
       required: false
       selector:
@@ -56,7 +56,7 @@ switch_command:
       required: true
       selector:
         device:
-          integration: two_n_intercom
+          integration: 2n_intercom
     switch:
       required: true
       selector:
@@ -91,7 +91,7 @@ audio_test:
       required: true
       selector:
         device:
-          integration: two_n_intercom
+          integration: 2n_intercom
 
 display_text:
   fields:
@@ -99,7 +99,7 @@ display_text:
       required: true
       selector:
         device:
-          integration: two_n_intercom
+          integration: 2n_intercom
     text:
       required: true
       selector:
@@ -120,7 +120,7 @@ automation_trigger:
       required: true
       selector:
         device:
-          integration: two_n_intercom
+          integration: 2n_intercom
     trigger_id:
       required: true
       selector:
