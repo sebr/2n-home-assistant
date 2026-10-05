@@ -1,0 +1,25 @@
+# Development configuration. A trimmed set of integrations replaces
+# `default_config:` so Home Assistant starts in seconds.
+
+homeassistant:
+  name: 2N Dev
+
+http:
+  server_port: !env_var HA_PORT 8123
+
+frontend:
+config:
+api:
+history:
+logbook:
+recorder:
+  commit_interval: 30
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+logger:
+  default: info
+  logs:
+    custom_components.two_n_intercom: debug

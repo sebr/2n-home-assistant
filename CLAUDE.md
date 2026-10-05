@@ -12,11 +12,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Dependencies and tooling are managed with `uv`. Wrapper scripts live in `scripts/`.
 
 ```bash
-scripts/setup    # apt deps (ffmpeg, libturbojpeg, libpcap) + uv sync
-scripts/develop  # run a local Home Assistant with this integration loaded (config/)
-scripts/lint     # uv run ruff format . && uv run ruff check . --fix
-scripts/tests    # uv run pytest tests/ -v --tb=short
+scripts/bootstrap          # uv sync into ./.venv, plus the requirements of HA's built-in integrations
+scripts/develop            # run a local Home Assistant with this integration loaded (config/)
+scripts/develop --watch    # restart HA when files under custom_components/ change (needs watchexec)
+HA_PORT=8124 scripts/develop   # run on a fixed port by hand
+portree up                 # run HA on a port portree picks for this worktree; `portree ls --json` gives the direct_url
+scripts/worktree <branch>  # sibling git worktree that shares this .venv, seeded with this checkout's HA state
+scripts/lint               # ruff format . && ruff check . --fix
+scripts/tests              # pytest tests/ -v --tb=short (extra args pass through)
+scripts/setup              # dev container only: apt deps (ffmpeg, libturbojpeg, libpcap) + bootstrap
 ```
+
+Development runs on the host; the dev container is optional. Scripts use `./.venv` when it
+exists, otherwise whatever is on `PATH`. `scripts/develop` passes `--skip-pip`, so the venv
+must already hold what HA's built-in integrations need — rerun `scripts/bootstrap` after a
+plain `uv sync` (which removes those extras) or a Home Assistant upgrade. The camera
+platform wants `ffmpeg` on the host (`brew install ffmpeg`).
 
 Run a single test:
 
@@ -97,7 +108,8 @@ raises `ConfigEntryAuthFailed`.
 - The device probes are deliberately fault-tolerant — a missing/disabled endpoint should
   degrade to "feature absent", never crash setup. Preserve this when adding endpoints.
 - `config/` is a local Home Assistant runtime dir for `scripts/develop`; it's gitignored
-  (only `configuration.yaml` is tracked) — don't commit its contents.
+  (only `configuration.yaml` is tracked) — don't commit its contents. `configuration.yaml`
+  lists a few integrations instead of `default_config:` so HA boots in about two seconds.
 
 ## Testing
 
