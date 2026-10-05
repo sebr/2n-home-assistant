@@ -18,3 +18,6 @@ config/*
 .claude/settings.local.json
 
 .devcontainer-lock.json
+
+# portree runtime state
+.portree/

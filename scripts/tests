@@ -3,5 +3,6 @@
 set -e
 
 cd "$(dirname "$0")/.."
+source scripts/_venv
 
-uv run pytest tests/ -v --tb=short
+python -m pytest tests/ -v --tb=short "$@"

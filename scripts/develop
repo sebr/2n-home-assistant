@@ -1,20 +1,38 @@
 #!/usr/bin/env bash
+#
+# Run Home Assistant with this worktree's integration loaded.
+#
+#   scripts/develop                 listen on 8123
+#   HA_PORT=8124 scripts/develop    listen on another port
+#   portree up                      let portree pick the port (it sets $PORT)
+#   scripts/develop --watch         restart on any change under custom_components (needs watchexec)
 
 set -e
 
 cd "$(dirname "$0")/.."
+source scripts/_venv
 
-# Create config dir if not present
-if [[ ! -d "${PWD}/config" ]]; then
-    mkdir -p "${PWD}/config"
-    uv run hass --config "${PWD}/config" --script ensure_config
+if [[ "${1:-}" == "--watch" ]]; then
+    if ! command -v watchexec >/dev/null 2>&1; then
+        echo "watchexec is required for --watch: brew install watchexec" >&2
+        exit 1
+    fi
+    exec watchexec --restart --exts py,json,yaml --watch custom_components -- "$0"
 fi
+
+# configuration.yaml is tracked, but the files it includes are not.
+[[ -f config/automations.yaml ]] || echo "[]" > config/automations.yaml
+touch config/scripts.yaml config/scenes.yaml
 
 # Set the path to custom_components
 ## This lets us have the structure we want <root>/custom_components/two_n_intercom
 ## while at the same time have Home Assistant configuration inside <root>/config
 ## without resorting to symlinks.
 export PYTHONPATH="${PYTHONPATH}:${PWD}/custom_components"
+export HA_PORT="${HA_PORT:-${PORT:-8123}}"
 
-# Start Home Assistant
-uv run hass --config "${PWD}/config" --debug
+echo "Home Assistant on http://localhost:${HA_PORT}"
+
+# --skip-pip: the integration has no requirements, and scripts/bootstrap
+# installs those of the built-in integrations, so skip pip on every boot.
+hass --config "${PWD}/config" --debug --skip-pip

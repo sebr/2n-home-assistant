@@ -119,11 +119,16 @@ go2rtc stream pointing at `rtsp://<device-ip>/h264_stream`.
 ## Development
 
 ```bash
-scripts/setup    # install dependencies (uv)
-scripts/develop  # run a local Home Assistant with the integration loaded
-scripts/lint     # ruff format + check
-scripts/tests    # pytest
+scripts/bootstrap          # create ./.venv with uv
+scripts/develop            # run a local Home Assistant with the integration loaded
+scripts/develop --watch    # restart on changes (needs watchexec)
+scripts/worktree <branch>  # new git worktree sharing the venv and HA state
+scripts/lint               # ruff format + check
+scripts/tests              # pytest
 ```
+
+Everything runs on the host; no dev container needed. With portree, `portree up`
+runs Home Assistant on a free port for the current worktree.
 
 ## Disclaimer
 
