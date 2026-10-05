@@ -65,6 +65,9 @@ actions:
       message: "Card {{ trigger.event.data.params.uid }} presented"
 ```
 
+Each bus event carries `device_id`, `device_name`, `event`, `params`, and the
+device's `event_id` and `utc_time`.
+
 ## Device setup
 
 On the intercom's web interface:

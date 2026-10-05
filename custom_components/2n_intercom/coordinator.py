@@ -22,7 +22,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import (
     ATTR_DEVICE_NAME,
     ATTR_EVENT,
+    ATTR_EVENT_ID,
     ATTR_PARAMS,
+    ATTR_UTC_TIME,
     CONF_VERIFY_SSL,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_VERIFY_SSL,
@@ -252,6 +254,8 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
                 ATTR_DEVICE_NAME: self.config_entry.title,
                 ATTR_EVENT: event.event,
                 ATTR_PARAMS: event.params,
+                ATTR_EVENT_ID: event.id,
+                ATTR_UTC_TIME: event.utc_time,
             },
         )
 
