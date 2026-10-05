@@ -130,6 +130,8 @@ def mock_api() -> MagicMock:
             "SwitchStateChanged",
             "CallStateChanged",
             "UserAuthenticated",
+            "RexActivated",
+            "SilentAlarm",
         ]
     )
     api.register_event_callback = MagicMock()
