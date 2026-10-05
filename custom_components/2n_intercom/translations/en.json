@@ -32,7 +32,8 @@
     "abort": {
       "already_configured": "This intercom is already configured.",
       "reauth_successful": "Re-authentication was successful."
-    }
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {

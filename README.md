@@ -100,6 +100,11 @@ Copy `custom_components/2n_intercom` into your Home Assistant
 
 ## Configuration
 
+Home Assistant finds 2N intercoms on your network by their MAC address prefix
+(`7C:1E:B3`) through DHCP discovery and offers to set them up. If a configured
+intercom moves to a new IP address, discovery updates the stored address. You
+can also add one by hand:
+
 1. **Settings → Devices & Services → Add Integration → 2N Intercom**.
 2. Enter the device's IP address or hostname and the HTTP API account
    credentials.
