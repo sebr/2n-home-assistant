@@ -22,6 +22,9 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
+"custom_components/2n_intercom/**" = [
+    "N999", # package name must match the "2n_intercom" domain, which the brands repo uses
+]
 "scripts/*" = [
     "INP001", # standalone scripts, not a package
     "T201", # scripts print their output

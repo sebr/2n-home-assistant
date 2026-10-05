@@ -43,10 +43,10 @@ adding blanket ignores.
 
 ## Architecture
 
-A Home Assistant custom integration (`domain: two_n_intercom`) for 2N IP intercoms,
+A Home Assistant custom integration (`domain: 2n_intercom`) for 2N IP intercoms,
 talking to the device's local [HTTP API (HAPI)](https://wiki.2n.com/hip/hapi/latest/en).
 `iot_class` is `local_push`: state is polled, but real-time events arrive via a log
-subscription. All integration code lives under `custom_components/two_n_intercom/`.
+subscription. All integration code lives under `custom_components/2n_intercom/`.
 
 ### Two layers
 
@@ -74,7 +74,7 @@ truth. Understanding it explains most of the codebase:
    subscribe/pull loop (`hapi/api.py` `_event_loop`, long-polling `/api/log/pull`). Each
    event lands in `_handle_event`, which (a) records last-event-per-type in `event_states`,
    (b) folds state-bearing events into `TwoNData` via `_apply_event_to_data` (so entities
-   update instantly without waiting for the next poll), (c) fires the `two_n_intercom_event`
+   update instantly without waiting for the next poll), (c) fires the `2n_intercom_event`
    bus event for user automations, and (d) dispatches an internal signal
    (`signal_event(entry_id)`) that event-driven entities subscribe to.
 
@@ -103,6 +103,10 @@ raises `ConfigEntryAuthFailed`.
 
 ## Conventions
 
+- The domain `2n_intercom` matches [genka13/ha-2n-intercom](https://github.com/genka13/ha-2n-intercom)
+  so the integration picks up its brand images. Python can't `import` a name that starts
+  with a digit, so tests load modules with `importlib.import_module` and patch with
+  `patch.object` rather than a dotted string.
 - Python ≥ 3.14; `from __future__ import annotations` everywhere, HA-imports guarded under
   `TYPE_CHECKING`.
 - The device probes are deliberately fault-tolerant — a missing/disabled endpoint should

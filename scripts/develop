@@ -25,7 +25,7 @@ fi
 touch config/scripts.yaml config/scenes.yaml
 
 # Set the path to custom_components
-## This lets us have the structure we want <root>/custom_components/two_n_intercom
+## This lets us have the structure we want <root>/custom_components/2n_intercom
 ## while at the same time have Home Assistant configuration inside <root>/config
 ## without resorting to symlinks.
 export PYTHONPATH="${PYTHONPATH}:${PWD}/custom_components"

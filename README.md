@@ -39,24 +39,24 @@ for automations but hidden from auto-generated dashboards.
 
 | Service | Description |
 | --- | --- |
-| `two_n_intercom.dial` | Start an outgoing call to a number or SIP URI |
-| `two_n_intercom.answer` | Answer an incoming call |
-| `two_n_intercom.hangup` | Hang up a call (optionally with reason) |
-| `two_n_intercom.switch_command` | Advanced switch control: `on`/`off`/`trigger`/`lock`/`unlock`/`hold`/`release` |
-| `two_n_intercom.audio_test` | Run the built-in speaker/microphone loop test |
-| `two_n_intercom.display_text` | Show a text message on the device display |
-| `two_n_intercom.automation_trigger` | Fire an `HttpTrigger` block in the device's Automation |
+| `2n_intercom.dial` | Start an outgoing call to a number or SIP URI |
+| `2n_intercom.answer` | Answer an incoming call |
+| `2n_intercom.hangup` | Hang up a call (optionally with reason) |
+| `2n_intercom.switch_command` | Advanced switch control: `on`/`off`/`trigger`/`lock`/`unlock`/`hold`/`release` |
+| `2n_intercom.audio_test` | Run the built-in speaker/microphone loop test |
+| `2n_intercom.display_text` | Show a text message on the device display |
+| `2n_intercom.automation_trigger` | Fire an `HttpTrigger` block in the device's Automation |
 
 ### Events
 
 Every device event is also fired on the Home Assistant event bus as
-`two_n_intercom_event`, so you can build automations on any of the
+`2n_intercom_event`, so you can build automations on any of the
 [HAPI event types](https://wiki.2n.com/hip/hapi/latest/en):
 
 ```yaml
 triggers:
   - trigger: event
-    event_type: two_n_intercom_event
+    event_type: 2n_intercom_event
     event_data:
       event: CardEntered
 actions:
@@ -92,7 +92,7 @@ On the intercom's web interface:
 
 ### Manual
 
-Copy `custom_components/two_n_intercom` into your Home Assistant
+Copy `custom_components/2n_intercom` into your Home Assistant
 `config/custom_components/` directory and restart.
 
 ## Configuration

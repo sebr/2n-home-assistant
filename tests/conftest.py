@@ -2,23 +2,25 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.two_n_intercom.hapi.api import TwoNApiClient
-from custom_components.two_n_intercom.hapi.models import (
-    CallSession,
-    CameraCaps,
-    IoPort,
-    IoPortStatus,
-    PhoneAccount,
-    SwitchCaps,
-    SwitchStatus,
-    SystemInfo,
-    SystemStatus,
-)
+_api = import_module("custom_components.2n_intercom.hapi.api")
+TwoNApiClient = _api.TwoNApiClient
+_models = import_module("custom_components.2n_intercom.hapi.models")
+CallSession = _models.CallSession
+CameraCaps = _models.CameraCaps
+IoPort = _models.IoPort
+IoPortStatus = _models.IoPortStatus
+PhoneAccount = _models.PhoneAccount
+SwitchCaps = _models.SwitchCaps
+SwitchStatus = _models.SwitchStatus
+SystemInfo = _models.SystemInfo
+SystemStatus = _models.SystemStatus
+
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -141,8 +143,9 @@ def mock_api() -> MagicMock:
 @pytest.fixture
 def patch_api(mock_api: MagicMock) -> Any:
     """Patch the coordinator's API client construction."""
-    with patch(
-        "custom_components.two_n_intercom.coordinator.TwoNApiClient",
+    with patch.object(
+        import_module("custom_components.2n_intercom.coordinator"),
+        "TwoNApiClient",
         return_value=mock_api,
     ):
         yield mock_api
