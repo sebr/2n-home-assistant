@@ -160,6 +160,26 @@
       },
       "call": {
         "name": "Call"
+      },
+      "exit_button": {
+        "name": "Exit button",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "pressed": "Pressed"
+            }
+          }
+        }
+      },
+      "silent_alarm": {
+        "name": "Silent alarm",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "triggered": "Triggered"
+            }
+          }
+        }
       }
     }
   },

@@ -47,6 +47,12 @@
       },
       "call": {
         "default": "mdi:phone-log"
+      },
+      "exit_button": {
+        "default": "mdi:exit-run"
+      },
+      "silent_alarm": {
+        "default": "mdi:alarm-light-outline"
       }
     }
   },

@@ -87,6 +87,8 @@ async def test_entities_created(
         f"{prefix}_last_card",
         f"{prefix}_last_user",
         f"{prefix}_last_key",
+        f"{prefix}_exit_button",
+        f"{prefix}_silent_alarm",
     }
     assert expected <= unique_ids
     # Switch 2 is disabled on the device and must not create entities.
@@ -229,6 +231,34 @@ async def test_camera_without_rtsp_has_no_stream_source(
         "camera", DOMAIN, f"{setup_entry.entry_id}_camera"
     )
     assert await async_get_stream_source(hass, entity_id) is None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ("RexActivated", "exit_button", "pressed"),
+        ("SilentAlarm", "silent_alarm", "triggered"),
+    ],
+)
+async def test_alarm_and_exit_event_entities(
+    hass: HomeAssistant,
+    setup_entry: MockConfigEntry,
+    patch_api: MagicMock,
+    case: tuple[str, str, str],
+) -> None:
+    """Exit button and silent alarm device events trigger their entities."""
+    device_event, key, event_type = case
+    event_callback = patch_api.register_event_callback.call_args[0][0]
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "event", DOMAIN, f"{setup_entry.entry_id}_{key}"
+    )
+
+    event_callback(TwoNEvent(id=16, event=device_event, params={"rex": 1}))
+    await hass.async_block_till_done()
+
+    state = hass.states.get(entity_id)
+    assert state.attributes["event_type"] == event_type
+    assert state.attributes["rex"] == 1
 
 
 async def test_call_session_updates_sensors(
