@@ -23,6 +23,7 @@ integration probes the device's capabilities and event catalog at setup.
 | `binary_sensor` | Motion, noise †, tamper, door state, unauthorized door open, door open too long, switches blocked, call in progress ‡, ringing ‡, logic inputs †, SIP registration † |
 | `sensor` | Call state, last restart, last card †, last user †, last key † |
 | `event` | Doorbell (quick dial buttons), keypad †, access (card/code/fingerprint/mobile key), call state, exit button (REX), silent alarm |
+| `update` | Firmware: shows when 2N offers a newer version, with its release notes (install it from the device's web interface) |
 
 **† Disabled by default.** These are either privacy-sensitive (the keypad
 event and *last key* record individual keypresses — including PIN digits — to
