@@ -22,3 +22,5 @@ DEFAULT_SCAN_INTERVAL = 30
 ATTR_EVENT = "event"
 ATTR_PARAMS = "params"
 ATTR_DEVICE_NAME = "device_name"
+ATTR_EVENT_ID = "event_id"
+ATTR_UTC_TIME = "utc_time"

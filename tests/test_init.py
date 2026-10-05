@@ -139,6 +139,8 @@ async def test_device_event_fires_bus_and_updates_state(
     assert len(bus_events) == 1
     assert bus_events[0].data["event"] == "SwitchStateChanged"
     assert bus_events[0].data["params"] == {"switch": 1, "state": True}
+    assert bus_events[0].data["event_id"] == 10
+    assert bus_events[0].data["utc_time"] == 1752192000
     assert coordinator.data.switches[1].active is True
 
     registry = er.async_get(hass)
