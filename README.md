@@ -32,7 +32,8 @@ in *Settings → Devices & Services → 2N Intercom → entity → Enable* when 
 need them.
 
 The *access* event is on by default but leaves out the code typed at the
-keypad, so PINs never reach state history.
+keypad, so PINs never reach state history. The bus event still carries the
+code; see [Events](#events) to keep it out of the recorder.
 
 **‡ Hidden by default.** The *call in progress* and *ringing* binary sensors
 are redundant with the *call state* sensor and *call* event, so they're kept
@@ -70,6 +71,20 @@ actions:
 
 Each bus event carries `device_id`, `device_name`, `event`, `params`, and the
 device's `event_id` and `utc_time`.
+
+Bus events keep the device's full params, including the code typed at the
+keypad (`CodeEntered`) and card UIDs, so automations can check them. The
+recorder saves every bus event to its database. To keep these values out of
+it, exclude the event type in `configuration.yaml`:
+
+```yaml
+recorder:
+  exclude:
+    event_types:
+      - 2n_intercom_event
+```
+
+Automations still receive the events; only the database copy is skipped.
 
 ## Device setup
 
