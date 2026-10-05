@@ -5,10 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import httpx
-from homeassistant.components.camera import Camera
+from homeassistant.components.camera import Camera, CameraEntityFeature
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_aiohttp_proxy_stream
+from yarl import URL
 
-from .const import LOGGER
+from .const import CONF_RTSP_STREAM, LOGGER, RTSP_PORT, RTSP_STREAMS
 from .entity import TwoNEntity
 from .hapi.exceptions import TwoNError
 
@@ -61,6 +63,10 @@ class TwoNCamera(TwoNEntity, Camera):
             caps.jpeg_resolutions if caps else [],
             key=lambda resolution: resolution[0] * resolution[1],
         )
+        rtsp_stream = coordinator.config_entry.options.get(CONF_RTSP_STREAM)
+        self._rtsp_stream = rtsp_stream if rtsp_stream in RTSP_STREAMS else None
+        if self._rtsp_stream:
+            self._attr_supported_features = CameraEntityFeature.STREAM
 
     def _best_resolution(
         self, width: int | None, height: int | None
@@ -125,3 +131,19 @@ class TwoNCamera(TwoNEntity, Camera):
         # connection is closed before the long-lived still-image stream
         # starts (2N devices cap concurrent HAPI connections).
         return await super().handle_async_mjpeg_stream(request)
+
+    async def stream_source(self) -> str | None:
+        """Return the device's RTSP URL when an RTSP stream is selected."""
+        if self._rtsp_stream is None:
+            return None
+        data = self.coordinator.config_entry.data
+        return str(
+            URL.build(
+                scheme="rtsp",
+                user=data[CONF_USERNAME],
+                password=data[CONF_PASSWORD],
+                host=URL(self.coordinator.api.host).host or "",
+                port=RTSP_PORT,
+                path=f"/{self._rtsp_stream}",
+            )
+        )
