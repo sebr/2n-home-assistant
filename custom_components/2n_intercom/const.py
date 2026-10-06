@@ -25,9 +25,8 @@ RTSP_PORT = 554
 # Fixed polling interval (seconds). Real-time state arrives via the event loop,
 # so this is not user-configurable.
 DEFAULT_SCAN_INTERVAL = 30
-# How often to ask 2N's update server for new firmware (seconds). The server
-# caches its replies for an hour.
-FIRMWARE_SCAN_INTERVAL = 3600
+# How often to ask 2N's update server for new firmware (seconds).
+FIRMWARE_SCAN_INTERVAL = 86400
 
 # Attributes used in bus events and entity attributes.
 ATTR_EVENT = "event"
