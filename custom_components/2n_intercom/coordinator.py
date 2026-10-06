@@ -223,6 +223,15 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
         except TwoNError as err:
             raise UpdateFailed(err) from err
 
+        if self.firmware is not None and self._rebooted(data):
+            # The reboot may have installed new firmware; check again now
+            # rather than wait for the daily check.
+            self.config_entry.async_create_background_task(
+                self.hass,
+                self.firmware.async_request_refresh(),
+                "2n_intercom firmware check after reboot",
+            )
+
         if not self._listener_started and self.supported_events:
             self.api.register_event_callback(self._handle_event)
             self.api.register_auth_error_callback(self._trigger_reauth)
@@ -230,6 +239,15 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
             self._listener_started = True
 
         return data
+
+    def _rebooted(self, data: TwoNData) -> bool:
+        """Return True if the device's uptime went down since the last poll."""
+        if self.data is None:
+            return False
+        old, new = self.data.system_status, data.system_status
+        if old is None or new is None or old.up_time is None or new.up_time is None:
+            return False
+        return new.up_time < old.up_time
 
     # -------------------------------------------------------------- Events --
 

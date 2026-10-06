@@ -23,6 +23,7 @@ _coordinator = import_module("custom_components.2n_intercom.coordinator")
 _models = import_module("custom_components.2n_intercom.hapi.models")
 ChangelogEntry = _models.ChangelogEntry
 FirmwareRelease = _models.FirmwareRelease
+SystemStatus = _models.SystemStatus
 _exceptions = import_module("custom_components.2n_intercom.hapi.exceptions")
 TwoNConnectionError = _exceptions.TwoNConnectionError
 
@@ -120,4 +121,49 @@ async def test_no_firmware_package(
     newest = AsyncMock()
     entry = await _setup(hass, mock_config_entry_data, newest)
     assert _entity_id(hass, entry) is None
+    newest.assert_not_called()
+
+
+async def test_reboot_rechecks_firmware(
+    hass: HomeAssistant,
+    firmware_api: MagicMock,
+    mock_config_entry_data: dict[str, Any],
+) -> None:
+    """A drop in uptime triggers a firmware check without waiting a day."""
+    newest = AsyncMock(return_value=NEWEST)
+    entry = await _setup(hass, mock_config_entry_data, newest)
+    assert hass.states.get(_entity_id(hass, entry)).state == STATE_ON
+
+    # The device installed the update and rebooted.
+    firmware_api.get_system_info.return_value = replace(INFO, sw_version="3.3.1.82.4")
+    firmware_api.get_system_status.return_value = SystemStatus(
+        system_time=1752192100, up_time=60
+    )
+    newest.return_value = None
+    with patch.object(_coordinator, "get_newest_firmware", newest):
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+
+    state = hass.states.get(_entity_id(hass, entry))
+    assert state.state == STATE_OFF
+    assert state.attributes["installed_version"] == "3.3.1.82.4"
+
+
+async def test_no_recheck_without_reboot(
+    hass: HomeAssistant,
+    firmware_api: MagicMock,
+    mock_config_entry_data: dict[str, Any],
+) -> None:
+    """Normal polls with rising uptime don't hit the update server."""
+    newest = AsyncMock(return_value=NEWEST)
+    entry = await _setup(hass, mock_config_entry_data, newest)
+    newest.reset_mock()
+
+    firmware_api.get_system_status.return_value = SystemStatus(
+        system_time=1752192100, up_time=3700
+    )
+    with patch.object(_coordinator, "get_newest_firmware", newest):
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+
     newest.assert_not_called()
