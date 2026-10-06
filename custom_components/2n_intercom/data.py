@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from .coordinator import TwoNUpdateCoordinator
     from .hapi.models import (
         CallSession,
+        FirmwareRelease,
         IoPortStatus,
         PhoneAccount,
         SwitchStatus,
@@ -30,3 +31,12 @@ class TwoNData:
     ports: dict[str, IoPortStatus] = field(default_factory=dict)
     sessions: dict[int, CallSession] = field(default_factory=dict)
     accounts: dict[int, PhoneAccount] = field(default_factory=dict)
+
+
+@dataclass
+class TwoNFirmwareData:
+    """Installed firmware and the newest release on 2N's update server."""
+
+    installed_version: str | None = None
+    # None when the installed firmware is already the newest.
+    newest: FirmwareRelease | None = None

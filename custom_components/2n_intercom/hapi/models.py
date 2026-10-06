@@ -17,6 +17,8 @@ class SystemInfo:
     build_type: str | None = None
     device_name: str | None = None
     mac_addr: str | None = None
+    # Firmware family on the 2N update server, e.g. "verso2".
+    firmware_package: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -30,6 +32,7 @@ class SystemInfo:
             build_type=data.get("buildType"),
             device_name=data.get("deviceName"),
             mac_addr=data.get("macAddr"),
+            firmware_package=data.get("firmwarePackage"),
             raw=data,
         )
 
@@ -233,4 +236,43 @@ class TwoNEvent:
             up_time=data.get("upTime"),
             tz_shift=data.get("tzShift"),
             params=data.get("params", {}),
+        )
+
+
+@dataclass(frozen=True)
+class ChangelogEntry:
+    """Release notes for one firmware version."""
+
+    version: str
+    text: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ChangelogEntry:
+        """Build from one entry of the update server's changelog list."""
+        return cls(version=data.get("version", ""), text=data.get("text", ""))
+
+
+@dataclass(frozen=True)
+class FirmwareRelease:
+    """The newest firmware offered by the 2N update server."""
+
+    version: str
+    download_url: str | None = None
+    checksum: str | None = None  # SHA-256 of the firmware file
+    changelog: list[ChangelogEntry] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FirmwareRelease:
+        """Build from the update server's JSON reply."""
+        firmware = next(
+            (item for item in data.get("files", []) if item.get("type") == "firmware"),
+            {},
+        )
+        return cls(
+            version=data["version"],
+            download_url=firmware.get("url"),
+            checksum=firmware.get("checksum"),
+            changelog=[
+                ChangelogEntry.from_dict(item) for item in data.get("changelog.md", [])
+            ],
         )

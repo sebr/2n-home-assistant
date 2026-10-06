@@ -30,9 +30,10 @@ from .const import (
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     EVENT_TWO_N_EVENT,
+    FIRMWARE_SCAN_INTERVAL,
     LOGGER,
 )
-from .data import TwoNData
+from .data import TwoNData, TwoNFirmwareData
 from .hapi.api import TwoNApiClient
 from .hapi.exceptions import (
     TwoNAuthError,
@@ -41,6 +42,7 @@ from .hapi.exceptions import (
     TwoNPrivilegeError,
 )
 from .hapi.models import CallSession, IoPortStatus, SwitchStatus
+from .hapi.update_server import get_newest_firmware
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -90,6 +92,8 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
         self.has_calls = False
         self.has_phone = False
         self.has_system_status = False
+        # Checks 2N's update server; None if the device can't be looked up.
+        self.firmware: TwoNFirmwareCoordinator | None = None
 
         # Last received event per event type, for event-driven entities.
         self.event_states: dict[str, TwoNEvent] = {}
@@ -115,6 +119,9 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
         except TwoNError as err:
             msg = f"Unable to fetch device info: {err}"
             raise UpdateFailed(msg) from err
+
+        if self.system_info.firmware_package:
+            self.firmware = TwoNFirmwareCoordinator(self.hass, self.config_entry, self)
 
         self.system_caps = (
             await self._probe(self.api.get_system_caps, "system caps") or {}
@@ -216,6 +223,15 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
         except TwoNError as err:
             raise UpdateFailed(err) from err
 
+        if self.firmware is not None and self._rebooted(data):
+            # The reboot may have installed new firmware; check again now
+            # rather than wait for the daily check.
+            self.config_entry.async_create_background_task(
+                self.hass,
+                self.firmware.async_request_refresh(),
+                "2n_intercom firmware check after reboot",
+            )
+
         if not self._listener_started and self.supported_events:
             self.api.register_event_callback(self._handle_event)
             self.api.register_auth_error_callback(self._trigger_reauth)
@@ -223,6 +239,15 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
             self._listener_started = True
 
         return data
+
+    def _rebooted(self, data: TwoNData) -> bool:
+        """Return True if the device's uptime went down since the last poll."""
+        if self.data is None:
+            return False
+        old, new = self.data.system_status, data.system_status
+        if old is None or new is None or old.up_time is None or new.up_time is None:
+            return False
+        return new.up_time < old.up_time
 
     # -------------------------------------------------------------- Events --
 
@@ -306,3 +331,38 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
                 )
             return True
         return False
+
+
+class TwoNFirmwareCoordinator(DataUpdateCoordinator[TwoNFirmwareData]):
+    """Check 2N's update server for firmware newer than the device's."""
+
+    config_entry: TwoNConfigEntry
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: TwoNConfigEntry,
+        device: TwoNUpdateCoordinator,
+    ) -> None:
+        """Initialize with the device coordinator whose API it reads."""
+        super().__init__(
+            hass=hass,
+            logger=LOGGER,
+            config_entry=entry,
+            name=f"{DOMAIN} firmware",
+            update_interval=timedelta(seconds=FIRMWARE_SCAN_INTERVAL),
+        )
+        self._device = device
+
+    async def _async_update_data(self) -> TwoNFirmwareData:
+        """Read the installed version, then ask the update server for newer."""
+        try:
+            # Read it fresh each time: firmware may change outside Home
+            # Assistant, for example through the device's web interface.
+            info = await self._device.api.get_system_info()
+            # The update server is on the internet, so verify its certificate
+            # even when the device's own certificate isn't checked.
+            newest = await get_newest_firmware(get_async_client(self.hass), info)
+        except TwoNError as err:
+            raise UpdateFailed(err) from err
+        return TwoNFirmwareData(installed_version=info.sw_version, newest=newest)
