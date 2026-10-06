@@ -70,6 +70,10 @@ jobs:
       - name: "Generate release notes"
         id: notes
         uses: actions/github-script@v9
+        env:
+          # Read through the environment, not pasted into the script, so
+          # backticks or ${...} in the notes can't break or run as code.
+          CUSTOM_NOTES: ${{ inputs.custom_notes }}
         with:
           script: |
             const version = '${{ steps.version.outputs.version }}';
@@ -83,7 +87,7 @@ jobs:
               });
 
               // Optionally prepend custom notes
-              const customNotes = `${{ inputs.custom_notes }}`.trim();
+              const customNotes = (process.env.CUSTOM_NOTES || '').trim();
               let fullNotes = data.body;
 
               if (customNotes) {
@@ -95,7 +99,7 @@ jobs:
             } catch (error) {
               // Fallback if release notes generation fails
               console.log('⚠️ Could not generate release notes, using fallback');
-              const customNotes = `${{ inputs.custom_notes }}`.trim();
+              const customNotes = (process.env.CUSTOM_NOTES || '').trim();
               const fallbackNotes = customNotes || `Release ${version}`;
               core.setOutput('notes', fallbackNotes);
             }
