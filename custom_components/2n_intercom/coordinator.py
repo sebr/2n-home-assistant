@@ -77,6 +77,7 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
             client=get_async_client(hass, verify_ssl=verify_ssl),
+            tolerate_auth_failures=True,
         )
 
         # Capabilities discovered during setup.

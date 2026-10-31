@@ -17,7 +17,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from typing import TYPE_CHECKING, Any
+from time import monotonic
+from typing import TYPE_CHECKING, Any, NoReturn
 
 import httpx
 
@@ -57,6 +58,14 @@ LOG_PULL_HTTP_TIMEOUT = LOG_PULL_TIMEOUT + 15
 # Subscription expires after this many seconds without a pull.
 LOG_SUBSCRIPTION_DURATION = 120
 
+# A client that tolerates auth failures raises TwoNAuthError only after this
+# many 401s in a row, spread over at least this many seconds. Until then a 401
+# raises TwoNConnectionError. 2N devices sometimes refuse valid credentials for
+# a moment (seen while Home Assistant stalls); one refusal is no proof the
+# password changed.
+AUTH_FAILURE_LIMIT = 3
+AUTH_FAILURE_WINDOW = 120
+
 # Reconnect backoff bounds for the event listener loop.
 RECONNECT_DELAY_MIN = 5
 RECONNECT_DELAY_MAX = 60
@@ -90,13 +99,24 @@ class TwoNApiClient:
         username: str,
         password: str,
         client: httpx.AsyncClient,
+        *,
+        tolerate_auth_failures: bool = False,
     ) -> None:
-        """Initialize the client with a base URL, credentials and HTTP client."""
+        """
+        Initialize the client with a base URL, credentials and HTTP client.
+
+        With ``tolerate_auth_failures``, a short run of 401s raises
+        TwoNConnectionError rather than TwoNAuthError; see AUTH_FAILURE_LIMIT.
+        Leave it off when checking new credentials, which should fail at once.
+        """
         self._base = host.rstrip("/")
         self._username = username
         self._password = password
         self._client = client
         self._auth: httpx.Auth | None = None
+        self._tolerate_auth_failures = tolerate_auth_failures
+        self._auth_failures = 0
+        self._auth_failures_since = 0.0
 
         self._event_task: asyncio.Task | None = None
         self._event_callbacks: list[Callable[[TwoNEvent], None]] = []
@@ -150,9 +170,15 @@ class TwoNApiClient:
             raise TwoNConnectionError(msg) from err
 
         if response.status_code == httpx.codes.UNAUTHORIZED:
+            LOGGER.debug(
+                "HTTP 401 from %s%s; WWW-Authenticate: %s",
+                self._base,
+                path,
+                response.headers.get_list("www-authenticate"),
+            )
             self._auth = None
-            msg = "Authentication failed; check username and password"
-            raise TwoNAuthError(msg)
+            self._auth_failed("Authentication failed; check username and password")
+        self._auth_failures = 0
         if response.status_code == httpx.codes.FORBIDDEN:
             msg = f"Account lacks the privilege required for {path}"
             raise TwoNPrivilegeError(msg)
@@ -201,9 +227,22 @@ class TwoNApiClient:
             msg = f"Account lacks the privilege required for {path}"
             raise TwoNPrivilegeError(msg)
         if code in _AUTH_CODES:
-            msg = f"Authentication failed for {path}: {description}"
-            raise TwoNAuthError(msg)
+            self._auth_failed(f"Authentication failed for {path}: {description}")
         raise TwoNApiError(code, description, param)
+
+    def _auth_failed(self, msg: str) -> NoReturn:
+        """Raise for a refused request, tolerating a short run of refusals."""
+        now = monotonic()
+        if self._auth_failures == 0:
+            self._auth_failures_since = now
+        self._auth_failures += 1
+        if self._tolerate_auth_failures and (
+            self._auth_failures < AUTH_FAILURE_LIMIT
+            or now - self._auth_failures_since < AUTH_FAILURE_WINDOW
+        ):
+            msg = f"{msg} (refusal {self._auth_failures}; will retry)"
+            raise TwoNConnectionError(msg)
+        raise TwoNAuthError(msg)
 
     # -------------------------------------------------------------- System --
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from importlib import import_module
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -254,3 +256,110 @@ async def test_camera_snapshot_error(client: TwoNApiClient) -> None:
     )
     with pytest.raises(TwoNApiError):
         await client.get_camera_snapshot(width=123, height=456)
+
+
+def _tolerant_client() -> TwoNApiClient:
+    return TwoNApiClient(
+        host=BASE,
+        username="user",
+        password="pass",
+        client=httpx.AsyncClient(),
+        tolerate_auth_failures=True,
+    )
+
+
+_UNAUTHORIZED = httpx.Response(401, headers={"WWW-Authenticate": 'Basic realm="2N"'})
+_STATUS_OK = httpx.Response(
+    200, json={"success": True, "result": {"systemTime": 1752192000, "upTime": 100}}
+)
+
+
+@respx.mock
+async def test_single_401_then_success_is_not_auth_failure() -> None:
+    """One refusal, then the same password works: no auth error."""
+    client = _tolerant_client()
+    respx.get(f"{BASE}/api/system/status").side_effect = [
+        _UNAUTHORIZED,
+        _UNAUTHORIZED,
+        _STATUS_OK,
+    ]
+    # The first request gets 401 twice: once for Digest, once for Basic.
+    with pytest.raises(TwoNConnectionError):
+        await client.get_system_status()
+    status = await client.get_system_status()
+    assert status.up_time == 100
+
+
+@respx.mock
+async def test_repeated_401s_raise_auth_error() -> None:
+    """A run of refusals over two minutes is a real auth failure."""
+    client = _tolerant_client()
+    respx.get(f"{BASE}/api/system/status").respond(
+        401, headers={"WWW-Authenticate": 'Basic realm="2N"'}
+    )
+    clock = iter([0.0, 10.0, 20.0, 200.0])
+    with patch.object(_api, "monotonic", side_effect=lambda: next(clock)):
+        for _ in range(3):
+            # Three refusals inside two minutes: still treated as transient.
+            with pytest.raises(TwoNConnectionError):
+                await client.get_system_status()
+        with pytest.raises(TwoNAuthError):
+            await client.get_system_status()
+
+
+@respx.mock
+async def test_success_resets_auth_failure_count() -> None:
+    """A success between refusals starts the count again."""
+    client = _tolerant_client()
+    route = respx.get(f"{BASE}/api/system/status")
+    clock = iter([0.0, 300.0, 600.0])
+    with patch.object(_api, "monotonic", side_effect=lambda: next(clock)):
+        route.side_effect = [_UNAUTHORIZED, _UNAUTHORIZED]
+        with pytest.raises(TwoNConnectionError):
+            await client.get_system_status()
+        route.side_effect = [_UNAUTHORIZED, _STATUS_OK]
+        await client.get_system_status()
+        for _ in range(2):
+            route.side_effect = [_UNAUTHORIZED, _UNAUTHORIZED]
+            with pytest.raises(TwoNConnectionError):
+                await client.get_system_status()
+
+
+@respx.mock
+async def test_event_listener_survives_single_401() -> None:
+    """The event listener retries after one refusal instead of asking for re-auth."""
+    client = _tolerant_client()
+    auth_callback = MagicMock()
+    client.register_auth_error_callback(auth_callback)
+    respx.get(f"{BASE}/api/log/subscribe").side_effect = [
+        _UNAUTHORIZED,
+        _UNAUTHORIZED,
+        httpx.Response(200, json={"success": True, "result": {"id": 7}}),
+    ]
+    respx.get(f"{BASE}/api/log/unsubscribe").respond(json={"success": True})
+    # Reaching the pull means the listener subscribed; stop there.
+    with (
+        patch.object(client, "log_pull", AsyncMock(side_effect=asyncio.CancelledError)),
+        patch.object(_api.asyncio, "sleep", AsyncMock()),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await client._event_loop()
+    auth_callback.assert_not_called()
+
+
+@respx.mock
+async def test_event_listener_reauths_after_repeated_401s() -> None:
+    """The event listener asks for re-auth once refusals persist."""
+    client = _tolerant_client()
+    auth_callback = MagicMock()
+    client.register_auth_error_callback(auth_callback)
+    respx.get(f"{BASE}/api/log/subscribe").respond(
+        401, headers={"WWW-Authenticate": 'Basic realm="2N"'}
+    )
+    clock = iter([0.0, 10.0, 20.0, 200.0])
+    with (
+        patch.object(_api, "monotonic", side_effect=lambda: next(clock)),
+        patch.object(_api.asyncio, "sleep", AsyncMock()),
+    ):
+        await client._event_loop()
+    auth_callback.assert_called_once()
