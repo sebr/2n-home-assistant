@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from importlib import import_module
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntryState
@@ -20,7 +20,9 @@ EVENT_TWO_N_EVENT = _const.EVENT_TWO_N_EVENT
 _models = import_module("custom_components.2n_intercom.hapi.models")
 TwoNEvent = _models.TwoNEvent
 _exceptions = import_module("custom_components.2n_intercom.hapi.exceptions")
+TwoNAuthError = _exceptions.TwoNAuthError
 TwoNPrivilegeError = _exceptions.TwoNPrivilegeError
+_coordinator = import_module("custom_components.2n_intercom.coordinator")
 
 
 @pytest.fixture
@@ -408,8 +410,49 @@ async def test_privilege_error_does_not_trigger_reauth(
     await hass.async_block_till_done()
 
     assert coordinator.last_update_success is False
-    assert not [
+    assert not _reauth_flows(hass)
+
+
+def _reauth_flows(hass: HomeAssistant) -> list[Any]:
+    return [
         flow
         for flow in hass.config_entries.flow.async_progress()
         if flow["context"].get("source") == "reauth"
     ]
+
+
+async def test_single_auth_failure_does_not_trigger_reauth(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
+) -> None:
+    """One refused poll, then the same password works: no re-auth prompt."""
+    coordinator = setup_entry.runtime_data
+    switch_status = patch_api.get_switch_status.return_value
+    patch_api.get_switch_status.side_effect = TwoNAuthError("refused")
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert coordinator.last_update_success is False
+
+    patch_api.get_switch_status.side_effect = None
+    patch_api.get_switch_status.return_value = switch_status
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert coordinator.last_update_success is True
+    assert not _reauth_flows(hass)
+
+
+async def test_repeated_auth_failures_trigger_reauth(
+    hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
+) -> None:
+    """Polls refused for two minutes start re-auth."""
+    coordinator = setup_entry.runtime_data
+    patch_api.get_switch_status.side_effect = TwoNAuthError("refused")
+
+    with patch.object(_coordinator, "monotonic", side_effect=[0.0, 60.0, 120.0]):
+        for _ in range(2):
+            await coordinator.async_refresh()
+            await hass.async_block_till_done()
+            assert not _reauth_flows(hass)
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+    assert _reauth_flows(hass)

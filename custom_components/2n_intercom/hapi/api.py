@@ -17,8 +17,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from time import monotonic
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -58,14 +57,6 @@ LOG_PULL_HTTP_TIMEOUT = LOG_PULL_TIMEOUT + 15
 # Subscription expires after this many seconds without a pull.
 LOG_SUBSCRIPTION_DURATION = 120
 
-# A client that tolerates auth failures raises TwoNAuthError only after this
-# many 401s in a row, spread over at least this many seconds. Until then a 401
-# raises TwoNConnectionError. 2N devices sometimes refuse valid credentials for
-# a moment (seen while Home Assistant stalls); one refusal is no proof the
-# password changed.
-AUTH_FAILURE_LIMIT = 3
-AUTH_FAILURE_WINDOW = 120
-
 # Reconnect backoff bounds for the event listener loop.
 RECONNECT_DELAY_MIN = 5
 RECONNECT_DELAY_MAX = 60
@@ -99,28 +90,16 @@ class TwoNApiClient:
         username: str,
         password: str,
         client: httpx.AsyncClient,
-        *,
-        tolerate_auth_failures: bool = False,
     ) -> None:
-        """
-        Initialize the client with a base URL, credentials and HTTP client.
-
-        With ``tolerate_auth_failures``, a short run of 401s raises
-        TwoNConnectionError rather than TwoNAuthError; see AUTH_FAILURE_LIMIT.
-        Leave it off when checking new credentials, which should fail at once.
-        """
+        """Initialize the client with a base URL, credentials and HTTP client."""
         self._base = host.rstrip("/")
         self._username = username
         self._password = password
         self._client = client
         self._auth: httpx.Auth | None = None
-        self._tolerate_auth_failures = tolerate_auth_failures
-        self._auth_failures = 0
-        self._auth_failures_since = 0.0
 
         self._event_task: asyncio.Task | None = None
         self._event_callbacks: list[Callable[[TwoNEvent], None]] = []
-        self._auth_error_callbacks: list[Callable[[], None]] = []
 
     @property
     def host(self) -> str:
@@ -177,8 +156,8 @@ class TwoNApiClient:
                 response.headers.get_list("www-authenticate"),
             )
             self._auth = None
-            self._auth_failed("Authentication failed; check username and password")
-        self._auth_failures = 0
+            msg = "Authentication failed; check username and password"
+            raise TwoNAuthError(msg)
         if response.status_code == httpx.codes.FORBIDDEN:
             msg = f"Account lacks the privilege required for {path}"
             raise TwoNPrivilegeError(msg)
@@ -227,22 +206,9 @@ class TwoNApiClient:
             msg = f"Account lacks the privilege required for {path}"
             raise TwoNPrivilegeError(msg)
         if code in _AUTH_CODES:
-            self._auth_failed(f"Authentication failed for {path}: {description}")
+            msg = f"Authentication failed for {path}: {description}"
+            raise TwoNAuthError(msg)
         raise TwoNApiError(code, description, param)
-
-    def _auth_failed(self, msg: str) -> NoReturn:
-        """Raise for a refused request, tolerating a short run of refusals."""
-        now = monotonic()
-        if self._auth_failures == 0:
-            self._auth_failures_since = now
-        self._auth_failures += 1
-        if self._tolerate_auth_failures and (
-            self._auth_failures < AUTH_FAILURE_LIMIT
-            or now - self._auth_failures_since < AUTH_FAILURE_WINDOW
-        ):
-            msg = f"{msg} (refusal {self._auth_failures}; will retry)"
-            raise TwoNConnectionError(msg)
-        raise TwoNAuthError(msg)
 
     # -------------------------------------------------------------- System --
 
@@ -503,10 +469,6 @@ class TwoNApiClient:
         """Register a callback invoked for every pulled event."""
         self._event_callbacks.append(event_callback)
 
-    def register_auth_error_callback(self, auth_callback: Callable[[], None]) -> None:
-        """Register a callback invoked when the event loop hits an auth error."""
-        self._auth_error_callbacks.append(auth_callback)
-
     def start_event_listener(self) -> None:
         """Start the background subscribe/pull loop."""
         if self._event_task is None or self._event_task.done():
@@ -558,16 +520,11 @@ class TwoNApiClient:
                     err,
                 )
                 return
-            except TwoNAuthError:
-                LOGGER.warning(
-                    "Authentication failed in event listener for %s", self._base
-                )
-                for auth_callback in self._auth_error_callbacks:
-                    auth_callback()
-                return
             except TwoNError as err:
-                # Covers connection drops and expired subscriptions; both are
-                # fixed by resubscribing after a backoff.
+                # Covers connection drops and expired subscriptions, which are
+                # fixed by resubscribing after a backoff. Auth errors land here
+                # too: the device sometimes refuses a valid password for a
+                # moment, and the coordinator's polls decide on re-auth.
                 LOGGER.debug(
                     "Event listener error on %s: %s; retrying in %ss",
                     self._base,

@@ -135,7 +135,6 @@ def mock_api() -> MagicMock:
         ]
     )
     api.register_event_callback = MagicMock()
-    api.register_auth_error_callback = MagicMock()
     api.start_event_listener = MagicMock()
     api.stop_event_listener = AsyncMock()
     api.close = AsyncMock()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import timedelta
+from time import monotonic
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import (
@@ -51,6 +52,13 @@ if TYPE_CHECKING:
     from .hapi.models import CameraCaps, IoPort, SwitchCaps, SystemInfo, TwoNEvent
 
 
+# Once set up, start re-auth only after the device has refused the stored
+# password for this many seconds with no accepted poll in between. 2N devices
+# sometimes refuse a valid password for a moment, for example while Home
+# Assistant stalls; one refusal is no proof the password changed.
+AUTH_FAILURE_WINDOW = 120
+
+
 def signal_event(entry_id: str) -> str:
     """Dispatcher signal name for device events of a config entry."""
     return f"{DOMAIN}_{entry_id}_event"
@@ -77,7 +85,6 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
             username=entry.data[CONF_USERNAME],
             password=entry.data[CONF_PASSWORD],
             client=get_async_client(hass, verify_ssl=verify_ssl),
-            tolerate_auth_failures=True,
         )
 
         # Capabilities discovered during setup.
@@ -101,6 +108,8 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
 
         self._listener_started = False
         self._shutdown_remove_listener = None
+        # When the current run of refused polls began; None if none failed.
+        self._auth_refused_since: float | None = None
 
     # ----------------------------------------------------------- Lifecycle --
 
@@ -220,9 +229,10 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
             # wrong; surface as a normal update failure instead.
             raise UpdateFailed(err) from err
         except TwoNAuthError as err:
-            raise ConfigEntryAuthFailed(err) from err
+            raise self._auth_refused(err) from err
         except TwoNError as err:
             raise UpdateFailed(err) from err
+        self._auth_refused_since = None
 
         if self.firmware is not None and self._rebooted(data):
             # The reboot may have installed new firmware; check again now
@@ -235,11 +245,19 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
 
         if not self._listener_started and self.supported_events:
             self.api.register_event_callback(self._handle_event)
-            self.api.register_auth_error_callback(self._trigger_reauth)
             self.api.start_event_listener()
             self._listener_started = True
 
         return data
+
+    def _auth_refused(self, err: TwoNAuthError) -> Exception:
+        """Return UpdateFailed for a short run of refusals, else re-auth."""
+        now = monotonic()
+        if self._auth_refused_since is None:
+            self._auth_refused_since = now
+        if now - self._auth_refused_since < AUTH_FAILURE_WINDOW:
+            return UpdateFailed(f"Device refused the credentials; will retry: {err}")
+        return ConfigEntryAuthFailed(err)
 
     def _rebooted(self, data: TwoNData) -> bool:
         """Return True if the device's uptime went down since the last poll."""
@@ -251,15 +269,6 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
         return new.up_time < old.up_time
 
     # -------------------------------------------------------------- Events --
-
-    @callback
-    def _trigger_reauth(self) -> None:
-        """Start re-auth when the background event loop hits an auth error."""
-        LOGGER.warning(
-            "2N authentication failed for %s; starting re-auth flow",
-            self.config_entry.title,
-        )
-        self.config_entry.async_start_reauth(self.hass)
 
     @callback
     def _handle_event(self, event: TwoNEvent) -> None:
