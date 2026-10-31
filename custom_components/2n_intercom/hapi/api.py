@@ -100,7 +100,6 @@ class TwoNApiClient:
 
         self._event_task: asyncio.Task | None = None
         self._event_callbacks: list[Callable[[TwoNEvent], None]] = []
-        self._auth_error_callbacks: list[Callable[[], None]] = []
 
     @property
     def host(self) -> str:
@@ -150,6 +149,12 @@ class TwoNApiClient:
             raise TwoNConnectionError(msg) from err
 
         if response.status_code == httpx.codes.UNAUTHORIZED:
+            LOGGER.debug(
+                "HTTP 401 from %s%s; WWW-Authenticate: %s",
+                self._base,
+                path,
+                response.headers.get_list("www-authenticate"),
+            )
             self._auth = None
             msg = "Authentication failed; check username and password"
             raise TwoNAuthError(msg)
@@ -464,10 +469,6 @@ class TwoNApiClient:
         """Register a callback invoked for every pulled event."""
         self._event_callbacks.append(event_callback)
 
-    def register_auth_error_callback(self, auth_callback: Callable[[], None]) -> None:
-        """Register a callback invoked when the event loop hits an auth error."""
-        self._auth_error_callbacks.append(auth_callback)
-
     def start_event_listener(self) -> None:
         """Start the background subscribe/pull loop."""
         if self._event_task is None or self._event_task.done():
@@ -519,16 +520,11 @@ class TwoNApiClient:
                     err,
                 )
                 return
-            except TwoNAuthError:
-                LOGGER.warning(
-                    "Authentication failed in event listener for %s", self._base
-                )
-                for auth_callback in self._auth_error_callbacks:
-                    auth_callback()
-                return
             except TwoNError as err:
-                # Covers connection drops and expired subscriptions; both are
-                # fixed by resubscribing after a backoff.
+                # Covers connection drops and expired subscriptions, which are
+                # fixed by resubscribing after a backoff. Auth errors land here
+                # too: the device sometimes refuses a valid password for a
+                # moment, and the coordinator's polls decide on re-auth.
                 LOGGER.debug(
                     "Event listener error on %s: %s; retrying in %ss",
                     self._base,

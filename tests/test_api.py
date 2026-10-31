@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from importlib import import_module
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -254,3 +256,24 @@ async def test_camera_snapshot_error(client: TwoNApiClient) -> None:
     )
     with pytest.raises(TwoNApiError):
         await client.get_camera_snapshot(width=123, height=456)
+
+
+@respx.mock
+async def test_event_listener_retries_after_401s(client: TwoNApiClient) -> None:
+    """The event listener backs off and resubscribes after repeated 401s."""
+    unauthorized = httpx.Response(401, headers={"WWW-Authenticate": 'Basic realm="2N"'})
+    # Each refused attempt sends Digest, then Basic: two 401s per attempt.
+    subscribe = respx.get(f"{BASE}/api/log/subscribe")
+    subscribe.side_effect = [
+        *[unauthorized] * 4,
+        httpx.Response(200, json={"success": True, "result": {"id": 7}}),
+    ]
+    respx.get(f"{BASE}/api/log/unsubscribe").respond(json={"success": True})
+    # Reaching the pull means the listener resubscribed; stop there.
+    with (
+        patch.object(client, "log_pull", AsyncMock(side_effect=asyncio.CancelledError)),
+        patch.object(_api, "RECONNECT_DELAY_MIN", 0),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await client._event_loop()
+    assert subscribe.call_count == 5
