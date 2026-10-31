@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import timedelta
 from time import monotonic
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from homeassistant.const import (
     CONF_HOST,
@@ -52,8 +52,9 @@ if TYPE_CHECKING:
     from .hapi.models import CameraCaps, IoPort, SwitchCaps, SystemInfo, TwoNEvent
 
 
-# Once set up, start re-auth only after the device has refused the stored
-# password for this many seconds with no accepted poll in between. 2N devices
+# Once set up, start re-auth only after every poll for this many seconds has
+# been refused, with no poll in between that the device accepted or that
+# failed for another reason. 2N devices
 # sometimes refuse a valid password for a moment, for example while Home
 # Assistant stalls; one refusal is no proof the password changed.
 AUTH_FAILURE_WINDOW = 120
@@ -108,7 +109,7 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
 
         self._listener_started = False
         self._shutdown_remove_listener = None
-        # When the current run of refused polls began; None if none failed.
+        # When the current run of refused polls began; None outside a run.
         self._auth_refused_since: float | None = None
 
     # ----------------------------------------------------------- Lifecycle --
@@ -227,10 +228,13 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
             # Privileges were narrowed on the device after setup. The
             # credentials are still valid, so a re-auth prompt would be
             # wrong; surface as a normal update failure instead.
+            self._auth_refused_since = None
             raise UpdateFailed(err) from err
         except TwoNAuthError as err:
-            raise self._auth_refused(err) from err
+            await self._auth_refused(err)
         except TwoNError as err:
+            # Not a refusal, so it ends any run of refusals.
+            self._auth_refused_since = None
             raise UpdateFailed(err) from err
         self._auth_refused_since = None
 
@@ -250,14 +254,20 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
 
         return data
 
-    def _auth_refused(self, err: TwoNAuthError) -> Exception:
-        """Return UpdateFailed for a short run of refusals, else re-auth."""
+    async def _auth_refused(self, err: TwoNAuthError) -> NoReturn:
+        """Fail this poll; start re-auth once refusals have run for a while."""
         now = monotonic()
         if self._auth_refused_since is None:
             self._auth_refused_since = now
         if now - self._auth_refused_since < AUTH_FAILURE_WINDOW:
-            return UpdateFailed(f"Device refused the credentials; will retry: {err}")
-        return ConfigEntryAuthFailed(err)
+            msg = f"Device refused the credentials; will retry: {err}"
+            raise UpdateFailed(msg) from err
+        # Home Assistant stops polling until re-auth; stop the event listener
+        # too so it doesn't keep sending a wrong password. Re-auth reloads
+        # the entry, which starts it again.
+        await self.api.stop_event_listener()
+        self._listener_started = False
+        raise ConfigEntryAuthFailed(err) from err
 
     def _rebooted(self, data: TwoNData) -> bool:
         """Return True if the device's uptime went down since the last poll."""

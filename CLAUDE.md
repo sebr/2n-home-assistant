@@ -95,11 +95,13 @@ entry's `runtime_data` holds the coordinator (`TwoNConfigEntry = ConfigEntry[Two
 
 ### Auth and re-auth
 
-Auth failures on the background event loop can't raise into a coordinator update, so the
-API exposes an auth-error callback; the coordinator's `_trigger_reauth` starts HA's re-auth
-flow. Note the distinction the coordinator draws: `TwoNPrivilegeError` (privileges narrowed
-after setup — credentials still valid) surfaces as `UpdateFailed`, while `TwoNAuthError`
-raises `ConfigEntryAuthFailed`.
+Only the coordinator decides on re-auth. 2N devices sometimes refuse a valid password for a
+moment, so after setup a `TwoNAuthError` in a poll raises `UpdateFailed` until every poll
+for `AUTH_FAILURE_WINDOW` seconds has been refused; then it stops the event listener and
+raises `ConfigEntryAuthFailed`. During setup a `TwoNAuthError` raises `ConfigEntryAuthFailed`
+at once. The event listener treats auth errors like dropped connections: it backs off and
+resubscribes. `TwoNPrivilegeError` (privileges narrowed after setup — credentials still
+valid) always surfaces as `UpdateFailed`.
 
 ## Conventions
 

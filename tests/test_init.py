@@ -21,6 +21,7 @@ _models = import_module("custom_components.2n_intercom.hapi.models")
 TwoNEvent = _models.TwoNEvent
 _exceptions = import_module("custom_components.2n_intercom.hapi.exceptions")
 TwoNAuthError = _exceptions.TwoNAuthError
+TwoNConnectionError = _exceptions.TwoNConnectionError
 TwoNPrivilegeError = _exceptions.TwoNPrivilegeError
 _coordinator = import_module("custom_components.2n_intercom.coordinator")
 
@@ -444,7 +445,7 @@ async def test_single_auth_failure_does_not_trigger_reauth(
 async def test_repeated_auth_failures_trigger_reauth(
     hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
 ) -> None:
-    """Polls refused for two minutes start re-auth."""
+    """Polls refused for two minutes start re-auth and stop the listener."""
     coordinator = setup_entry.runtime_data
     patch_api.get_switch_status.side_effect = TwoNAuthError("refused")
 
@@ -456,3 +457,32 @@ async def test_repeated_auth_failures_trigger_reauth(
         await coordinator.async_refresh()
         await hass.async_block_till_done()
     assert _reauth_flows(hass)
+    patch_api.stop_event_listener.assert_awaited()
+
+
+@pytest.mark.parametrize(
+    "between",
+    [None, TwoNConnectionError("timeout"), TwoNPrivilegeError("no privilege")],
+    ids=["success", "connection_error", "privilege_error"],
+)
+async def test_other_outcome_resets_auth_failures(
+    hass: HomeAssistant,
+    setup_entry: MockConfigEntry,
+    patch_api: MagicMock,
+    between: Exception | None,
+) -> None:
+    """Refusals far apart, with another outcome between them, are no run."""
+    coordinator = setup_entry.runtime_data
+    switch_status = patch_api.get_switch_status.return_value
+    refused = TwoNAuthError("refused")
+
+    with patch.object(_coordinator, "monotonic", side_effect=[0.0, 300.0]):
+        patch_api.get_switch_status.side_effect = refused
+        await coordinator.async_refresh()
+        patch_api.get_switch_status.side_effect = between
+        patch_api.get_switch_status.return_value = switch_status
+        await coordinator.async_refresh()
+        patch_api.get_switch_status.side_effect = refused
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+    assert not _reauth_flows(hass)
