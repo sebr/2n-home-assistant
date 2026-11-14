@@ -21,3 +21,7 @@ config/*
 
 # portree runtime state
 .portree/
+
+# go2rtc binary and its config, run by hand for the dev server
+/go2rtc
+/go2rtc.yaml

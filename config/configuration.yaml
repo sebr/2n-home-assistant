@@ -11,7 +11,9 @@ frontend:
 config:
 api:
 # WebRTC for camera live streams, needed for two-way audio.
+# Outside Docker, HA doesn't start go2rtc: run ./go2rtc yourself first.
 go2rtc:
+  url: http://localhost:1984
 history:
 logbook:
 recorder:
