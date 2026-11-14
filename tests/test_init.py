@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant.common import MockConfigEntry
 
@@ -24,6 +25,12 @@ TwoNAuthError = _exceptions.TwoNAuthError
 TwoNConnectionError = _exceptions.TwoNConnectionError
 TwoNPrivilegeError = _exceptions.TwoNPrivilegeError
 _coordinator = import_module("custom_components.2n_intercom.coordinator")
+
+
+def _intercom_device(hass: HomeAssistant, entry: MockConfigEntry) -> dr.DeviceEntry:
+    """Return the single device registered for a config entry."""
+    (device,) = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
+    return device
 
 
 @pytest.fixture
@@ -142,6 +149,9 @@ async def test_device_event_fires_bus_and_updates_state(
     await hass.async_block_till_done()
 
     assert len(bus_events) == 1
+    device = _intercom_device(hass, setup_entry)
+    assert (DOMAIN, setup_entry.entry_id) in device.identifiers
+    assert bus_events[0].data["device_id"] == device.id
     assert bus_events[0].data["event"] == "SwitchStateChanged"
     assert bus_events[0].data["params"] == {"switch": 1, "state": True}
     assert bus_events[0].data["event_id"] == 10
@@ -350,11 +360,7 @@ async def test_dial_service(
     hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
 ) -> None:
     """The dial service resolves the device and calls the API."""
-    from homeassistant.helpers import device_registry as dr
-
-    device = dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, setup_entry.entry_id), setup_entry.entry_id
-    )
+    device = _intercom_device(hass, setup_entry)
     await hass.services.async_call(
         DOMAIN,
         "dial",
@@ -368,14 +374,10 @@ async def test_answer_service_defaults_to_ringing_session(
     hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
 ) -> None:
     """The answer service picks the ringing incoming session by default."""
-    from homeassistant.helpers import device_registry as dr
-
     coordinator = setup_entry.runtime_data
     coordinator.data.sessions[1] = make_call_session("ringing")
 
-    device = dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, setup_entry.entry_id), setup_entry.entry_id
-    )
+    device = _intercom_device(hass, setup_entry)
     await hass.services.async_call(
         DOMAIN, "answer", {"device_id": device.id}, blocking=True
     )
@@ -386,11 +388,7 @@ async def test_switch_command_coerces_string_values(
     hass: HomeAssistant, setup_entry: MockConfigEntry, patch_api: MagicMock
 ) -> None:
     """Templated string values are coerced like other services do."""
-    from homeassistant.helpers import device_registry as dr
-
-    device = dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, setup_entry.entry_id), setup_entry.entry_id
-    )
+    device = _intercom_device(hass, setup_entry)
     await hass.services.async_call(
         DOMAIN,
         "switch_command",

@@ -15,7 +15,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -103,6 +102,11 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
         self.has_system_status = False
         # Checks 2N's update server; None if the device can't be looked up.
         self.firmware: TwoNFirmwareCoordinator | None = None
+
+        # Device registry id of the intercom, set once the device is
+        # registered in async_setup_entry. Cached so bus events don't need a
+        # registry lookup per event.
+        self.device_id: str | None = None
 
         # Last received event per event type, for event-driven entities.
         self.event_states: dict[str, TwoNEvent] = {}
@@ -288,14 +292,10 @@ class TwoNUpdateCoordinator(DataUpdateCoordinator[TwoNData]):
         data_changed = self._apply_event_to_data(event)
 
         # Fire a bus event so users can build automations on raw device events.
-        device_registry = dr.async_get(self.hass)
-        device = device_registry.async_get_device(
-            identifiers={(DOMAIN, self.config_entry.entry_id)}
-        )
         self.hass.bus.async_fire(
             EVENT_TWO_N_EVENT,
             {
-                "device_id": device.id if device else None,
+                "device_id": self.device_id,
                 ATTR_DEVICE_NAME: self.config_entry.title,
                 ATTR_EVENT: event.event,
                 ATTR_PARAMS: event.params,
