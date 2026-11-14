@@ -4,8 +4,8 @@
 homeassistant:
   name: 2N Dev
 
-http:
-  server_port: !env_var HA_PORT 8123
+# No http: block. Home Assistant 2026.11+ keeps HTTP settings in .storage/http;
+# scripts/develop sets the port through SETUP_PORT instead.
 
 frontend:
 config:
