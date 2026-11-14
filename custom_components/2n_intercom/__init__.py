@@ -53,11 +53,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: TwoNConfigEntry) -> bool
 
     # Register the intercom device up front so bus events can reference it
     # even before the first entity is created.
-    device_registry = dr.async_get(hass)
-    device_registry.async_get_or_create(
+    device = dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id,
         **intercom_device_info(coordinator),
     )
+    coordinator.device_id = device.id
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))

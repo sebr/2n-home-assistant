@@ -40,15 +40,6 @@ SystemInfo = _models.SystemInfo
 SystemStatus = _models.SystemStatus
 
 
-pytest_plugins = "pytest_homeassistant_custom_component"
-
-
-@pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations: Any) -> None:
-    """Enable loading custom integrations in all tests."""
-    return
-
-
 @pytest.fixture
 def mock_config_entry_data() -> dict[str, Any]:
     """Return mock config entry data."""

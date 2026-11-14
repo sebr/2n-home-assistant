@@ -119,7 +119,8 @@ valid) always surfaces as `UpdateFailed`.
 
 ## Testing
 
-`pytest-homeassistant-custom-component` provides HA fixtures; `respx` mocks httpx.
+`pytest-homeassistant` (Home Assistant's own test package, pinned to the same
+version as `homeassistant`) provides HA fixtures; `respx` mocks httpx.
 `tests/conftest.py` provides a fully-stubbed `mock_api` (a `MagicMock(spec=TwoNApiClient)`)
 and `patch_api` to inject it into the coordinator — use these to test integration behaviour
 without a real device.
