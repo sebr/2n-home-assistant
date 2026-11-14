@@ -30,7 +30,7 @@ uv sync --python "${PYTHON_VERSION}"
 # Install what the integrations in config/configuration.yaml need, so that
 # scripts/develop can boot with --skip-pip instead of resolving them each start.
 # A plain `uv sync` removes these again; rerun this script after one.
-domains="$(grep -oE '^[a-z_]+:' config/configuration.yaml | tr -d ':' | tr '\n' ' ')"
+domains="$(grep -oE '^[a-z0-9_]+:' config/configuration.yaml | tr -d ':' | tr '\n' ' ')"
 "${venv}/bin/python" scripts/_ha_requirements.py ${domains} \
     | uv pip install --python "${venv}/bin/python" --requirement -
 
