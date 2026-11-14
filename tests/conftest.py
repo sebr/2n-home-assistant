@@ -2,11 +2,29 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from importlib import import_module
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import homeassistant.components.camera as ha_camera
 import pytest
+
+# Remove once pytest-homeassistant-custom-component ships a build for
+# Home Assistant 2026.11 and the dev pin moves there. Until then the test env
+# runs an older core, so stand in the 2026.11 two-way audio camera API.
+if not hasattr(ha_camera, "CameraEntityCapabilities"):
+
+    @dataclass(frozen=True, kw_only=True)
+    class _CameraEntityCapabilities:
+        two_way_audio: bool = False
+
+    ha_camera.CameraEntityCapabilities = _CameraEntityCapabilities
+    ha_camera.Camera.camera_entity_capabilities = property(
+        lambda self: getattr(
+            self, "_attr_camera_entity_capabilities", _CameraEntityCapabilities()
+        )
+    )
 
 _api = import_module("custom_components.2n_intercom.hapi.api")
 TwoNApiClient = _api.TwoNApiClient

@@ -10,6 +10,8 @@ http:
 frontend:
 config:
 api:
+# WebRTC for camera live streams, needed for two-way audio.
+go2rtc:
 history:
 logbook:
 recorder:
