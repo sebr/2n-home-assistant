@@ -10,7 +10,7 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from .conftest import make_call_session
 
@@ -352,8 +352,8 @@ async def test_dial_service(
     """The dial service resolves the device and calls the API."""
     from homeassistant.helpers import device_registry as dr
 
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, setup_entry.entry_id)}
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, setup_entry.entry_id), setup_entry.entry_id
     )
     await hass.services.async_call(
         DOMAIN,
@@ -373,8 +373,8 @@ async def test_answer_service_defaults_to_ringing_session(
     coordinator = setup_entry.runtime_data
     coordinator.data.sessions[1] = make_call_session("ringing")
 
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, setup_entry.entry_id)}
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, setup_entry.entry_id), setup_entry.entry_id
     )
     await hass.services.async_call(
         DOMAIN, "answer", {"device_id": device.id}, blocking=True
@@ -388,8 +388,8 @@ async def test_switch_command_coerces_string_values(
     """Templated string values are coerced like other services do."""
     from homeassistant.helpers import device_registry as dr
 
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, setup_entry.entry_id)}
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, setup_entry.entry_id), setup_entry.entry_id
     )
     await hass.services.async_call(
         DOMAIN,
