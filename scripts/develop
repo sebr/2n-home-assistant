@@ -31,6 +31,14 @@ touch config/scripts.yaml config/scenes.yaml
 export PYTHONPATH="${PYTHONPATH}:${PWD}/custom_components"
 export HA_PORT="${HA_PORT:-${PORT:-8123}}"
 
+# Home Assistant 2026.11+ keeps HTTP settings in .storage/http, and a port change
+# there is a trial that reverts (and restarts HA) unless confirmed in the UI
+# within five minutes. With no stored settings and no http: YAML, HA takes its
+# default port from SETUP_PORT as the confirmed config, so drop the stored copy
+# and pass the port that way.
+rm -f config/.storage/http
+export SETUP_PORT="${HA_PORT}"
+
 echo "Home Assistant on http://localhost:${HA_PORT}"
 
 # --skip-pip: the integration has no requirements, and scripts/bootstrap

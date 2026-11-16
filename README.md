@@ -144,7 +144,26 @@ snapshots. For H.264 video, enable **Services → Streaming → RTSP** on the
 device, then choose an RTSP stream under the integration's **Options**. The
 camera then hands `rtsp://<device-ip>:554/h264_stream` (with the API account's
 credentials) to Home Assistant's `stream` integration, which `default_config`
-loads. For two-way audio, point go2rtc/WebRTC at the same URL.
+loads.
+
+### Two-way audio
+
+With an RTSP stream selected, the camera declares two-way audio (Home Assistant
+2026.11+), so a talk button appears on its live stream. Your browser's
+microphone audio reaches the intercom's speaker through go2rtc and the device's
+RTSP audio backchannel. You need:
+
+- an RTSP stream chosen in the integration's **Options** (MJPEG over HTTP has no
+  return audio path);
+- go2rtc, which `default_config` loads, so the stream plays over WebRTC — HLS
+  cannot carry audio back;
+- **Settings → System → Labs → Two-way audio** turned on;
+- Home Assistant opened over HTTPS, since browsers only allow the microphone on
+  secure pages.
+
+The device allows four RTSP streams at once, and the backchannel counts as
+one. If the audio is choppy, try **Fix defective audio backchannel** under
+**Services → Streaming → RTSP** on the device.
 
 ## Development
 

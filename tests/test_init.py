@@ -212,6 +212,7 @@ async def test_camera_rtsp_stream_source(
         CameraEntityFeature,
         async_get_stream_source,
     )
+    from homeassistant.components.camera.const import DATA_COMPONENT
 
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -228,6 +229,8 @@ async def test_camera_rtsp_stream_source(
     )
     state = hass.states.get(entity_id)
     assert state.attributes["supported_features"] == CameraEntityFeature.STREAM
+    camera = hass.data[DATA_COMPONENT].get_entity(entity_id)
+    assert camera.camera_entity_capabilities.two_way_audio is True
     assert (
         await async_get_stream_source(hass, entity_id)
         == "rtsp://hapi:secret@192.168.1.10:554/h264_stream"
@@ -237,13 +240,16 @@ async def test_camera_rtsp_stream_source(
 async def test_camera_without_rtsp_has_no_stream_source(
     hass: HomeAssistant, setup_entry: MockConfigEntry
 ) -> None:
-    """By default the camera stays on MJPEG over HTTP."""
+    """By default the camera stays on MJPEG over HTTP, without two-way audio."""
     from homeassistant.components.camera import async_get_stream_source
+    from homeassistant.components.camera.const import DATA_COMPONENT
 
     entity_id = er.async_get(hass).async_get_entity_id(
         "camera", DOMAIN, f"{setup_entry.entry_id}_camera"
     )
     assert await async_get_stream_source(hass, entity_id) is None
+    camera = hass.data[DATA_COMPONENT].get_entity(entity_id)
+    assert camera.camera_entity_capabilities.two_way_audio is False
 
 
 @pytest.mark.parametrize(

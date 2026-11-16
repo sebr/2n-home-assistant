@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import httpx
-from homeassistant.components.camera import Camera, CameraEntityFeature
+from homeassistant.components.camera import (
+    Camera,
+    CameraEntityCapabilities,
+    CameraEntityFeature,
+)
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_aiohttp_proxy_stream
 from yarl import URL
@@ -67,6 +71,12 @@ class TwoNCamera(TwoNEntity, Camera):
         self._rtsp_stream = rtsp_stream if rtsp_stream in RTSP_STREAMS else None
         if self._rtsp_stream:
             self._attr_supported_features = CameraEntityFeature.STREAM
+            # go2rtc sends the browser's microphone to the device over the
+            # RTSP audio backchannel (ONVIF Profile T); MJPEG over HTTP has no
+            # return path, so only offer the talk button with RTSP.
+            self._attr_camera_entity_capabilities = CameraEntityCapabilities(
+                two_way_audio=True
+            )
 
     def _best_resolution(
         self, width: int | None, height: int | None

@@ -4,12 +4,16 @@
 homeassistant:
   name: 2N Dev
 
-http:
-  server_port: !env_var HA_PORT 8123
+# No http: block. Home Assistant 2026.11+ keeps HTTP settings in .storage/http;
+# scripts/develop sets the port through SETUP_PORT instead.
 
 frontend:
 config:
 api:
+# WebRTC for camera live streams, needed for two-way audio.
+# Outside Docker, HA doesn't start go2rtc: run ./go2rtc yourself first.
+go2rtc:
+  url: http://localhost:1984
 history:
 logbook:
 recorder:
