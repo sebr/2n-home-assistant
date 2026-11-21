@@ -204,10 +204,39 @@ async def test_doorbell_event_entity(
     assert state.attributes["button"] == "%1"
 
 
-async def test_camera_rtsp_stream_source(
-    hass: HomeAssistant, patch_api: MagicMock, mock_config_entry_data: dict[str, Any]
+@pytest.mark.parametrize(
+    ("rtsp_stream", "url", "two_way_audio"),
+    [
+        (
+            "h264_stream",
+            "rtsp://hapi:secret@192.168.1.10:554/onvif/media"
+            "?transport=unicast&profile=profile_h264_hq",
+            True,
+        ),
+        (
+            "mjpeg_stream",
+            "rtsp://hapi:secret@192.168.1.10:554/onvif/media"
+            "?transport=unicast&profile=profile_mjpeg",
+            True,
+        ),
+        ("h265_stream", "rtsp://hapi:secret@192.168.1.10:554/h265_stream", False),
+    ],
+)
+async def test_camera_rtsp_stream_source(  # noqa: PLR0913
+    hass: HomeAssistant,
+    patch_api: MagicMock,
+    mock_config_entry_data: dict[str, Any],
+    rtsp_stream: str,
+    url: str,
+    *,
+    two_way_audio: bool,
 ) -> None:
-    """Choosing an RTSP stream gives the camera an RTSP source URL."""
+    """
+    Choosing an RTSP stream gives the camera an RTSP source URL.
+
+    H.264 and MJPEG use the ONVIF media profiles, the only paths that carry
+    the audio backchannel; H.265 has no ONVIF profile and no two-way audio.
+    """
     from homeassistant.components.camera import (
         CameraEntityFeature,
         async_get_stream_source,
@@ -217,7 +246,7 @@ async def test_camera_rtsp_stream_source(
     entry = MockConfigEntry(
         domain=DOMAIN,
         data=mock_config_entry_data,
-        options={"rtsp_stream": "h264_stream"},
+        options={"rtsp_stream": rtsp_stream},
         unique_id="00-0000-0005",
     )
     entry.add_to_hass(hass)
@@ -230,11 +259,8 @@ async def test_camera_rtsp_stream_source(
     state = hass.states.get(entity_id)
     assert state.attributes["supported_features"] == CameraEntityFeature.STREAM
     camera = hass.data[DATA_COMPONENT].get_entity(entity_id)
-    assert camera.camera_entity_capabilities.two_way_audio is True
-    assert (
-        await async_get_stream_source(hass, entity_id)
-        == "rtsp://hapi:secret@192.168.1.10:554/h264_stream"
-    )
+    assert camera.camera_entity_capabilities.two_way_audio is two_way_audio
+    assert await async_get_stream_source(hass, entity_id) == url
 
 
 async def test_camera_without_rtsp_has_no_stream_source(

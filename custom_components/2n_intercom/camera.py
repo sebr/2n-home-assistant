@@ -14,7 +14,14 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_aiohttp_proxy_stream
 from yarl import URL
 
-from .const import CONF_RTSP_STREAM, LOGGER, RTSP_PORT, RTSP_STREAMS
+from .const import (
+    CONF_RTSP_STREAM,
+    LOGGER,
+    ONVIF_MEDIA_PATH,
+    ONVIF_PROFILES,
+    RTSP_PORT,
+    RTSP_STREAMS,
+)
 from .entity import TwoNEntity
 from .hapi.exceptions import TwoNError
 
@@ -71,9 +78,10 @@ class TwoNCamera(TwoNEntity, Camera):
         self._rtsp_stream = rtsp_stream if rtsp_stream in RTSP_STREAMS else None
         if self._rtsp_stream:
             self._attr_supported_features = CameraEntityFeature.STREAM
+        if self._rtsp_stream in ONVIF_PROFILES:
             # go2rtc sends the browser's microphone to the device over the
-            # RTSP audio backchannel (ONVIF Profile T); MJPEG over HTTP has no
-            # return path, so only offer the talk button with RTSP.
+            # RTSP audio backchannel (ONVIF Profile T). Only the ONVIF media
+            # profiles carry it; MJPEG over HTTP and H.265 have no return path.
             self._attr_camera_entity_capabilities = CameraEntityCapabilities(
                 two_way_audio=True
             )
@@ -147,6 +155,12 @@ class TwoNCamera(TwoNEntity, Camera):
         if self._rtsp_stream is None:
             return None
         data = self.coordinator.config_entry.data
+        if profile := ONVIF_PROFILES.get(self._rtsp_stream):
+            path = ONVIF_MEDIA_PATH
+            query = {"transport": "unicast", "profile": profile}
+        else:
+            path = f"/{self._rtsp_stream}"
+            query = None
         return str(
             URL.build(
                 scheme="rtsp",
@@ -154,6 +168,7 @@ class TwoNCamera(TwoNEntity, Camera):
                 password=data[CONF_PASSWORD],
                 host=URL(self.coordinator.api.host).host or "",
                 port=RTSP_PORT,
-                path=f"/{self._rtsp_stream}",
+                path=path,
+                query=query,
             )
         )

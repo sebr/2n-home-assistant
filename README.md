@@ -142,19 +142,30 @@ can also add one by hand:
 By default the camera entity proxies the device's MJPEG stream and serves
 snapshots. For H.264 video, enable **Services → Streaming → RTSP** on the
 device, then choose an RTSP stream under the integration's **Options**. The
-camera then hands `rtsp://<device-ip>:554/h264_stream` (with the API account's
-credentials) to Home Assistant's `stream` integration, which `default_config`
-loads.
+camera then hands an RTSP URL (with the API account's credentials) to Home
+Assistant's `stream` integration, which `default_config` loads:
+
+| Option | URL path |
+|---|---|
+| RTSP, H.264 | `/onvif/media?transport=unicast&profile=profile_h264_hq` |
+| RTSP, MJPEG | `/onvif/media?transport=unicast&profile=profile_mjpeg` |
+| RTSP, H.265 | `/h265_stream` |
+
+H.264 and MJPEG use the device's ONVIF media profiles, so their picture size and
+frame rate come from the device's ONVIF settings rather than **Services →
+Streaming → RTSP**.
 
 ### Two-way audio
 
-With an RTSP stream selected, the camera declares two-way audio (Home Assistant
-2026.11+), so a talk button appears on its live stream. Your browser's
-microphone audio reaches the intercom's speaker through go2rtc and the device's
-RTSP audio backchannel. You need:
+With the H.264 or MJPEG RTSP stream selected, the camera declares two-way audio
+(Home Assistant 2026.11+), so a talk button appears on its live stream. Your
+browser's microphone audio reaches the intercom's speaker through go2rtc and the
+device's RTSP audio backchannel. You need:
 
-- an RTSP stream chosen in the integration's **Options** (MJPEG over HTTP has no
-  return audio path);
+- the H.264 or MJPEG RTSP stream chosen in the integration's **Options**. Only
+  the device's ONVIF media profiles carry the backchannel: the plain
+  `/h264_stream` path refuses it, there is no ONVIF H.265 profile, and MJPEG
+  over HTTP has no return audio path;
 - go2rtc, which `default_config` loads, so the stream plays over WebRTC — HLS
   cannot carry audio back;
 - **Settings → System → Labs → Two-way audio** turned on;
