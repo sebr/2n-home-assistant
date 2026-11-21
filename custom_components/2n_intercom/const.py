@@ -21,6 +21,14 @@ DEFAULT_VERIFY_SSL = False
 RTSP_STREAM_NONE = "none"
 RTSP_STREAMS = ("h264_stream", "h265_stream", "mjpeg_stream")
 RTSP_PORT = 554
+# The plain RTSP paths above refuse the ONVIF audio backchannel (551 Option
+# not supported), so two-way audio needs the matching ONVIF media profile
+# instead, served at /onvif/media. The device has no H.265 ONVIF profile.
+ONVIF_MEDIA_PATH = "/onvif/media"
+ONVIF_PROFILES = {
+    "h264_stream": "profile_h264_hq",
+    "mjpeg_stream": "profile_mjpeg",
+}
 
 # Fixed polling interval (seconds). Real-time state arrives via the event loop,
 # so this is not user-configurable.
